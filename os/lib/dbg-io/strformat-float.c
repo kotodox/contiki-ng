@@ -34,7 +34,7 @@
 // Minor tweaks to get this to work with Contiki-NG's printf
 
 #include <strformat-float.h>
-
+#include <stddef.h>
 #include <float.h>
 
 // 'ftoa' conversion buffer size, this must be big enough to hold one converted

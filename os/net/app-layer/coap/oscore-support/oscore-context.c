@@ -110,6 +110,7 @@ compose_info(
 static bool
 bytes_equal(const uint8_t *a_ptr, uint8_t a_len, const uint8_t *b_ptr, uint8_t b_len)
 {
+  printf("%u \n", memcmp(a_ptr, b_ptr, a_len));
   return a_len == b_len && memcmp(a_ptr, b_ptr, a_len) == 0;
 }
 
@@ -198,7 +199,9 @@ oscore_find_ctx_by_rid(const uint8_t *rid, uint8_t rid_len)
 {
   oscore_ctx_t *ptr = NULL;
   for(ptr = list_head(common_context_list); ptr != NULL; ptr = list_item_next(ptr)){
+    //printf("%s", ptr->master_secret);
     if(bytes_equal(ptr->recipient_context.recipient_id, ptr->recipient_context.recipient_id_len, rid, rid_len)) {
+      printf("master sectret len: %u \n", ptr->master_secret_len);
       return ptr;
     }
   }

@@ -54,3 +54,5 @@ void test15_a_handler(void* response);
 
 void test16_a(coap_message_t* request);
 void test16_a_handler(void* response);
+
+void test_a(coap_message_t* request);

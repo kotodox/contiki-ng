@@ -44,6 +44,8 @@
 #include "coap-blocking-api.h"
 #include "dev/button-sensor.h"
 #include "plugtest_resources.h"
+#include "appendix_b2.h"
+
 
 #ifdef WITH_OSCORE
 #include "oscore.h"
@@ -52,7 +54,9 @@ void response_handler(coap_message_t *response);
 
 uint8_t master_secret[16] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10};
 uint8_t salt[8] = {0x9e, 0x7c, 0xa9, 0x22, 0x23, 0x78, 0x63, 0x40}; 
-uint8_t *sender_id = NULL;
+//uint8_t *sender_id = NULL;
+uint8_t sender_id[] = { 0x02};
+
 uint8_t receiver_id[] = { 0x01};
 #endif /* WITH_OSCORE */
 
@@ -62,7 +66,9 @@ uint8_t receiver_id[] = { 0x01};
 #define LOG_LEVEL  LOG_LEVEL_COAP
 
 /* FIXME: This server address is hard-coded for Cooja and link-local for unconnected border router. */
-#define SERVER_EP "coap://[fe80::202:0002:0002:0002]" //Cooja simulation address
+//#define SERVER_EP "coap://[fe80::202:0002:0002:0002]" //Cooja simulation address 
+#define SERVER_EP "coap://[fd00::302:304:506:708]" //Ip for plugtest server
+
 
 uint8_t test = 0;
 uint8_t failed_tests = 0;
@@ -76,9 +82,9 @@ static struct etimer et;
 
 uint8_t token[2] = { 0x05, 0x05};
 
-#define NUMBER_OF_URLS 8
+#define NUMBER_OF_URLS 9
 char *service_urls[NUMBER_OF_URLS] =
-{ ".well-known/core", "oscore/hello/coap", "oscore/hello/1", "oscore/hello/2", "oscore/hello/3", "oscore/hello/6", "oscore/hello/7", "oscore/test"};
+{ ".well-known/core", "oscore/hello/coap", "oscore/hello/1", "oscore/hello/2", "oscore/hello/3", "oscore/hello/6", "oscore/hello/7", "oscore/test", "oscore/app_b2"};
 
 
 PROCESS_THREAD(er_example_client, ev, data)
@@ -92,7 +98,7 @@ PROCESS_THREAD(er_example_client, ev, data)
 
   #ifdef WITH_OSCORE
   static oscore_ctx_t context;
-  oscore_derive_ctx(&context, master_secret, 16, salt, 8, 10, sender_id, 0, receiver_id, 1, NULL, 0);
+  oscore_derive_ctx(&context, master_secret, 16, salt, 8, 10, sender_id, 1, receiver_id, 1, NULL, 0);
 
   uint8_t ret = 0;
   ret += oscore_ep_ctx_set_association(&server_ep, service_urls[2], &context);

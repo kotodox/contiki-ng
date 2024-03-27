@@ -261,7 +261,8 @@ oscore_decode_option_value(uint8_t *option_value, int option_len, cose_encrypt0_
     cose_encrypt0_set_kid_context(cose, &(option_value[offset]), kid_context_len);
     offset += kid_context_len;
   }
-
+  LOG_DBG("OSCORE kid context: %s",cose->kid_context);
+  LOG_DBG_("\n");
   /* IF k-flag is set Key ID field is present. */
   if((option_value[0] & 0x08) != 0) {
     int kid_len = option_len - offset;
@@ -408,6 +409,25 @@ oscore_decode_message(coap_message_t *coap_pkt)
   cose_encrypt0_set_content(cose, coap_pkt->payload, encrypt_len);
 
   int res = cose_encrypt0_decrypt(cose);
+  if(cose->kid_context != NULL) {
+    LOG_DBG("\n hej hej vi kom hit \n");
+    nanocbor_value_t btst_enc;
+    nanocbor_decoder_init(&btst_enc, cose->kid_context, cose->kid_context_len);
+    size_t len_of_kid;
+    const uint8_t *nonce;
+    // int kidcon = nanocbor_get_bstr(&btst_enc, &cose->kid_context, &len_of_kid);
+    int kidcon = nanocbor_get_bstr(&btst_enc, &nonce, &len_of_kid);
+    if(kidcon != NANOCBOR_OK){
+      LOG_ERR("Couldnt decode byte string\n")
+    }
+    LOG_DBG("\n kid-context efter cbor: ");
+    
+    for (size_t i = 0; i < len_of_kid; ++i) {
+        LOG_DBG("%d ", nonce[i]);
+    }
+    LOG_DBG("\n");
+    return kidcon;
+  }
   if(res <= 0) {
     LOG_ERR("OSCORE Decryption Failure, result code: %d\n", res);
     if(coap_is_request(coap_pkt)) {

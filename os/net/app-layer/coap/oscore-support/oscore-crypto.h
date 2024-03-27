@@ -40,8 +40,9 @@
 #define _CRYPTO_H
 #include <inttypes.h>
 #include <stdbool.h>
-
+#include "cose.h"// isak
 #include "coap.h"
+
 
 #ifndef HKDF_INFO_MAXLEN
 #define HKDF_INFO_MAXLEN 25

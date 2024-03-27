@@ -8,8 +8,15 @@
 
 //static coap_observee_t *obs;
 
-char *urls[8] = { "/oscore/hello/coap", "/oscore/hello/1", "/oscore/hello/2", "/oscore/hello/3", "/oscore/observe", "/oscore/hello/6", "/oscore/hello/7", "/oscore/test"};
+char *urls[10] = { "/oscore/hello/coap", "/oscore/hello/1", "/oscore/hello/2", "/oscore/hello/3", "/oscore/observe", "/oscore/hello/6", "/oscore/hello/7", "/oscore/test","oscore/app_b2", "oscore/kudos"};
 uint8_t rid[] = { 0x73, 0x65, 0x72, 0x76, 0x65, 0x72 };
+
+
+void test_kudos(coap_message_t* request){
+  printf("\n\ntror inte vi kommer hit men vem vet\n\n");
+  coap_init_message(request, COAP_TYPE_CON, COAP_GET, 0);
+  coap_set_header_uri_path(request, urls[8]);
+}
 
 void test0_a(coap_message_t* request){
   printf("\n\nTest 0a: Starting!\n");
