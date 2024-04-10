@@ -45,7 +45,6 @@
 #include "stdio.h"
 #include "inttypes.h"
 #include "assert.h"
-
 #include "oscore-nanocbor-helper.h"
 
 #ifdef WITH_GROUPCOM
@@ -63,6 +62,9 @@
 #ifndef PRIu64
 #define PRIu64 "llu"
 #endif
+
+
+
 
 /* Sets Alg, Partial IV Key ID and Key in COSE. */
 static void
@@ -318,6 +320,44 @@ oscore_decode_message(coap_message_t *coap_pkt)
       return OSCORE_MISSING_CONTEXT; /* Will transform into UNAUTHORIZED_4_01 later */
     }
 
+    if(cose->kid_context != NULL) {
+      nanocbor_value_t btst_enc;
+      nanocbor_decoder_init(&btst_enc, cose->kid_context, cose->kid_context_len);
+      size_t len_of_kid;
+      const uint8_t *nonce;
+      // int kidcon = nanocbor_get_bstr(&btst_enc, &cose->kid_context, &len_of_kid);
+      int kidcon = nanocbor_get_bstr(&btst_enc, &nonce, &len_of_kid);
+      if(kidcon != NANOCBOR_OK){
+        LOG_ERR("Couldnt decode byte string\n");
+      }
+      const uint8_t *master_secret = ctx->master_secret;
+      const uint8_t *master_salt = ctx->master_salt;
+      uint8_t master_secret_len = ctx->master_secret_len;
+      uint8_t master_salt_len = ctx->master_salt_len;
+      const uint8_t *sender_id = ctx->sender_context.sender_id;
+      uint8_t sender_id_len = ctx->sender_context.sender_id_len;
+      const uint8_t *reciever_id = ctx->recipient_context.recipient_id;
+      uint8_t reciever_id_len = ctx->recipient_context.recipient_id_len;
+      LOG_DBG("sender id %d\n", *sender_id);
+      LOG_DBG("recevier id %d\n", *reciever_id);
+      LOG_DBG("\n");
+
+      LOG_DBG("\n kid-context lenght: %lu\n", len_of_kid);
+
+      LOG_DBG("\n kid-context efter cbor: ");
+      
+      for (size_t i = 0; i < len_of_kid; ++i) {
+          LOG_DBG("%d ", nonce[i]);
+      }
+      LOG_DBG("\n");
+      oscore_free_ctx(ctx);
+      static oscore_ctx_t ctx_new;
+      ctx = NULL;
+      oscore_derive_ctx(&ctx_new, master_secret, master_secret_len, master_salt, master_salt_len, 10, sender_id, sender_id_len, reciever_id, reciever_id_len, nonce, len_of_kid);
+      ctx = oscore_find_ctx_by_rid(reciever_id, reciever_id_len);
+      
+    }
+
 #ifdef WITH_GROUPCOM
     uint8_t gid_len = cose_encrypt0_get_kid_context(cose, &group_id);
     if(gid_len == 0) {
@@ -383,6 +423,8 @@ oscore_decode_message(coap_message_t *coap_pkt)
     }
   }
 
+  
+
   oscore_populate_cose(coap_pkt, cose, ctx, false);
   coap_pkt->security_context = ctx;
 
@@ -408,26 +450,8 @@ oscore_decode_message(coap_message_t *coap_pkt)
   memcpy(tmp_buffer, coap_pkt->payload, encrypt_len); 
   cose_encrypt0_set_content(cose, coap_pkt->payload, encrypt_len);
 
+
   int res = cose_encrypt0_decrypt(cose);
-  if(cose->kid_context != NULL) {
-    LOG_DBG("\n hej hej vi kom hit \n");
-    nanocbor_value_t btst_enc;
-    nanocbor_decoder_init(&btst_enc, cose->kid_context, cose->kid_context_len);
-    size_t len_of_kid;
-    const uint8_t *nonce;
-    // int kidcon = nanocbor_get_bstr(&btst_enc, &cose->kid_context, &len_of_kid);
-    int kidcon = nanocbor_get_bstr(&btst_enc, &nonce, &len_of_kid);
-    if(kidcon != NANOCBOR_OK){
-      LOG_ERR("Couldnt decode byte string\n")
-    }
-    LOG_DBG("\n kid-context efter cbor: ");
-    
-    for (size_t i = 0; i < len_of_kid; ++i) {
-        LOG_DBG("%d ", nonce[i]);
-    }
-    LOG_DBG("\n");
-    return kidcon;
-  }
   if(res <= 0) {
     LOG_ERR("OSCORE Decryption Failure, result code: %d\n", res);
     if(coap_is_request(coap_pkt)) {

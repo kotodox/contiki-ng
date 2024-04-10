@@ -56,7 +56,7 @@
 #define LOG_LEVEL LOG_LEVEL_COAP
 
 #ifndef OSCORE_MAX_ID_CONTEXT_LEN
-#define OSCORE_MAX_ID_CONTEXT_LEN 1
+#define OSCORE_MAX_ID_CONTEXT_LEN 8
 #endif
 
 MEMB(exchange_memb, oscore_exchange_t, TOKEN_SEQ_NUM);
@@ -169,6 +169,8 @@ oscore_derive_ctx(oscore_ctx_t *common_ctx,
 
   common_ctx->master_secret = master_secret;
   common_ctx->master_secret_len = master_secret_len;
+  common_ctx->master_salt = master_salt;
+  common_ctx->master_salt_len = master_salt_len;
   common_ctx->alg = alg;
 
 #ifdef WITH_GROUPCOM 
@@ -199,9 +201,7 @@ oscore_find_ctx_by_rid(const uint8_t *rid, uint8_t rid_len)
 {
   oscore_ctx_t *ptr = NULL;
   for(ptr = list_head(common_context_list); ptr != NULL; ptr = list_item_next(ptr)){
-    //printf("%s", ptr->master_secret);
     if(bytes_equal(ptr->recipient_context.recipient_id, ptr->recipient_context.recipient_id_len, rid, rid_len)) {
-      printf("master sectret len: %u \n", ptr->master_secret_len);
       return ptr;
     }
   }

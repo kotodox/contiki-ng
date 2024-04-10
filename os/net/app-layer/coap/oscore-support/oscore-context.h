@@ -90,6 +90,8 @@ typedef struct oscore_ctx {
   const uint8_t *master_secret;
   uint8_t common_iv[CONTEXT_INIT_VECT_LEN];
   uint8_t master_secret_len;
+  const uint8_t *master_salt;   
+  uint8_t master_salt_len;
   uint8_t alg;
 
 #ifdef WITH_GROUPCOM
