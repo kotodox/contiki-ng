@@ -56,13 +56,30 @@
 #define LOG_LEVEL LOG_LEVEL_COAP
 
 #ifndef OSCORE_MAX_ID_CONTEXT_LEN
-#define OSCORE_MAX_ID_CONTEXT_LEN 8
+#define OSCORE_MAX_ID_CONTEXT_LEN 16
 #endif
 
 MEMB(exchange_memb, oscore_exchange_t, TOKEN_SEQ_NUM);
 
 LIST(common_context_list);
 LIST(exchange_list);
+app_b2_nonces_t nonces = {
+        .kid_context_nonce = NULL,        // Pointer initialized to NULL
+        .len_kid_context_nonce = 0,       // Length initialized to 0
+        .aead_nonce = NULL,                // Pointer initialized to NULL
+        .len_aead_nonce = 0,                // Length initialized to 0
+        .aad = NULL,                // Pointer initialized to NULL
+        .len_aad = 0  
+};
+
+
+static void
+printf_hex_detailed(const char* name, const uint8_t *data, size_t len)
+{
+  LOG_DBG("%s (len=%zu): ", name, len);
+  LOG_DBG_BYTES(data, len);
+  LOG_DBG_("\n");
+}
 
 #define INFO_BUFFER_LENGTH ( \
   1 + /* array */ \
@@ -142,6 +159,12 @@ oscore_derive_ctx(oscore_ctx_t *common_ctx,
   {
     LOG_WARN("Please decrease OSCORE_MAX_ID_CONTEXT_LEN to be at maximum %" PRIu8 "\n", id_context_len);
   }
+  printf_hex_detailed("master secret: ", master_secret, master_secret_len);
+  printf_hex_detailed("master salt: ", master_salt, master_salt_len);
+  printf_hex_detailed("id_context: ", id_context, id_context_len);
+  
+
+
 
   /* sender_key */
   info_len = compose_info(info_buffer, sizeof(info_buffer), alg, sid, sid_len, id_context, id_context_len, "Key", CONTEXT_KEY_LEN);
@@ -150,6 +173,7 @@ oscore_derive_ctx(oscore_ctx_t *common_ctx,
        master_secret, master_secret_len,
        info_buffer, info_len,
        common_ctx->sender_context.sender_key, CONTEXT_KEY_LEN);
+  printf_hex_detailed("sender key: ", common_ctx->sender_context.sender_key, 16);
 
   /* Receiver key */
   info_len = compose_info(info_buffer, sizeof(info_buffer), alg, rid, rid_len, id_context, id_context_len, "Key", CONTEXT_KEY_LEN);
@@ -158,6 +182,7 @@ oscore_derive_ctx(oscore_ctx_t *common_ctx,
        master_secret, master_secret_len,
        info_buffer, info_len,
        common_ctx->recipient_context.recipient_key, CONTEXT_KEY_LEN);
+  printf_hex_detailed("recipient key: ", common_ctx->recipient_context.recipient_key, 16);
 
   /* common IV */
   info_len = compose_info(info_buffer, sizeof(info_buffer), alg, NULL, 0, id_context, id_context_len, "IV", CONTEXT_INIT_VECT_LEN);
@@ -271,6 +296,34 @@ oscore_remove_exchange(const uint8_t *token, uint8_t token_len)
     list_remove(exchange_list, ptr);
     memb_free(&exchange_memb, ptr);
   }
+}
+
+void
+oscore_appendixb2_set_nonce_kidcontext(const uint8_t *new_nonce, uint8_t len_nonce)
+{
+  nonces.kid_context_nonce = new_nonce;
+  nonces.len_kid_context_nonce = len_nonce;
+}
+
+void
+oscore_appendixb2_set_nonce_aead(const uint8_t *new_nonce, uint8_t len_nonce)
+{
+  nonces.aead_nonce = malloc(sizeof(uint8_t) * len_nonce);
+  memcpy(nonces.aead_nonce, new_nonce, len_nonce);
+  nonces.len_aead_nonce = len_nonce;
+}
+
+void
+oscore_appendixb2_set_aad(const uint8_t *new_nonce, uint8_t len_nonce)
+{
+  nonces.aad = new_nonce;
+  nonces.len_aad = len_nonce;
+}
+
+app_b2_nonces_t
+oscore_appendixb2_get_nonces(void)
+{
+  return nonces;
 }
 
 #ifdef WITH_GROUPCOM

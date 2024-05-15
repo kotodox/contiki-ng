@@ -171,15 +171,17 @@ static int
 oscore_encode_option_value(uint8_t *option_buffer, const cose_encrypt0_t *cose, bool include_partial_iv)
 {
   uint8_t offset = 1;
+  
   if(cose->partial_iv_len > 5){
-	  return 0;
+    return 0;
   }
   option_buffer[0] = 0;
-  if(cose->partial_iv_len > 0 && cose->partial_iv != NULL && include_partial_iv) {
+  if(cose->partial_iv_len > 0 && cose->partial_iv != NULL && include_partial_iv && cose->partial_iv_len < 6) {
     option_buffer[0] |= (0x07 & cose->partial_iv_len);
     memcpy(&(option_buffer[offset]), cose->partial_iv, cose->partial_iv_len);
     offset += cose->partial_iv_len;
   }
+  
 #ifdef WITH_GROUPCOM
   //Always set the 4th LSB to 1 and set kid context = Gid. kid = rid.
   //TODO right now hardcoded to only respond the Java client!
@@ -197,6 +199,7 @@ oscore_encode_option_value(uint8_t *option_buffer, const cose_encrypt0_t *cose, 
   memcpy(&(option_buffer[offset]), kid, kid_len);
   offset += kid_len;
 #else
+
   if(cose->kid_context_len > 0 && cose->kid_context != NULL) {
     option_buffer[0] |= 0x10;
     option_buffer[offset] = cose->kid_context_len;
@@ -308,6 +311,7 @@ oscore_decode_message(coap_message_t *coap_pkt)
 #endif
     const uint8_t *key_id;
     const uint8_t key_id_len = cose_encrypt0_get_key_id(cose, &key_id);
+    printf_hex_detailed("request message key_id", cose->key_id, cose->key_id_len);
 
     ctx = oscore_find_ctx_by_rid(key_id, key_id_len);
     if(ctx == NULL) {
@@ -319,16 +323,21 @@ oscore_decode_message(coap_message_t *coap_pkt)
       coap_error_message = "Security context not found";
       return OSCORE_MISSING_CONTEXT; /* Will transform into UNAUTHORIZED_4_01 later */
     }
-
+    
     if(cose->kid_context != NULL) {
       nanocbor_value_t btst_enc;
       nanocbor_decoder_init(&btst_enc, cose->kid_context, cose->kid_context_len);
-      size_t len_of_kid;
+      size_t len_of_kid = cose->kid_context_len;
       const uint8_t *nonce;
-      // int kidcon = nanocbor_get_bstr(&btst_enc, &cose->kid_context, &len_of_kid);
       int kidcon = nanocbor_get_bstr(&btst_enc, &nonce, &len_of_kid);
       if(kidcon != NANOCBOR_OK){
         LOG_ERR("Couldnt decode byte string\n");
+      }
+      app_b2_nonces_t nonces = oscore_appendixb2_get_nonces();
+      if(memcmp(nonce,nonces.kid_context_nonce,nonces.len_kid_context_nonce) == 0 && nonces.kid_context_nonce != NULL){
+        oscore_appendixb2_set_nonce_kidcontext(NULL,0);
+      }else {
+        oscore_appendixb2_set_nonce_kidcontext(nonce,len_of_kid);
       }
       const uint8_t *master_secret = ctx->master_secret;
       const uint8_t *master_salt = ctx->master_salt;
@@ -338,14 +347,6 @@ oscore_decode_message(coap_message_t *coap_pkt)
       uint8_t sender_id_len = ctx->sender_context.sender_id_len;
       const uint8_t *reciever_id = ctx->recipient_context.recipient_id;
       uint8_t reciever_id_len = ctx->recipient_context.recipient_id_len;
-      LOG_DBG("sender id %d\n", *sender_id);
-      LOG_DBG("recevier id %d\n", *reciever_id);
-      LOG_DBG("\n");
-
-      LOG_DBG("\n kid-context lenght: %lu\n", len_of_kid);
-
-      LOG_DBG("\n kid-context efter cbor: ");
-      
       for (size_t i = 0; i < len_of_kid; ++i) {
           LOG_DBG("%d ", nonce[i]);
       }
@@ -355,6 +356,7 @@ oscore_decode_message(coap_message_t *coap_pkt)
       ctx = NULL;
       oscore_derive_ctx(&ctx_new, master_secret, master_secret_len, master_salt, master_salt_len, 10, sender_id, sender_id_len, reciever_id, reciever_id_len, nonce, len_of_kid);
       ctx = oscore_find_ctx_by_rid(reciever_id, reciever_id_len);
+      
       
     }
 
@@ -433,13 +435,21 @@ oscore_decode_message(coap_message_t *coap_pkt)
   if (oscore_prepare_aad(coap_pkt, cose, &aad_enc, false) != NANOCBOR_OK) {
     return INTERNAL_SERVER_ERROR_5_00;
   }
-
   cose_encrypt0_set_aad(cose, aad_buffer, nanocbor_encoded_len(&aad_enc));
+
+
   cose_encrypt0_set_alg(cose, ctx->alg);
   
+  //Här printar vi partial iv från client side
   oscore_generate_nonce(cose, coap_pkt, nonce_buffer, sizeof(nonce_buffer));
+  uint8_t app_b2_nonce[13];
+  memcpy(app_b2_nonce,nonce_buffer,sizeof(nonce_buffer) );
+  oscore_appendixb2_set_nonce_aead(app_b2_nonce, sizeof(nonce_buffer));
+  uint8_t *nonce = oscore_appendixb2_get_nonces().aead_nonce;
+  printf_hex_detailed("saved nonce: ", nonce, sizeof(nonce_buffer));
+
   cose_encrypt0_set_nonce(cose, nonce_buffer, sizeof(nonce_buffer));
-  
+
   uint16_t encrypt_len = coap_pkt->payload_len;
 #ifdef WITH_GROUPCOM
   if (ctx->mode == OSCORE_GROUP){
@@ -525,9 +535,27 @@ oscore_populate_cose(const coap_message_t *pkt, cose_encrypt0_t *cose, const osc
     }
   } else { /* coap is response */
     if(sending){
-      cose->partial_iv_len = u64tob(ctx->recipient_context.sliding_window.recent_seq, cose->partial_iv);
+      app_b2_nonces_t nonces = oscore_appendixb2_get_nonces();  
+      if(nonces.kid_context_nonce == NULL){
+        cose->partial_iv_len = u64tob(ctx->recipient_context.sliding_window.recent_seq, cose->partial_iv);
+      }
       cose_encrypt0_set_key_id(cose, ctx->recipient_context.recipient_id, ctx->recipient_context.recipient_id_len);
       cose_encrypt0_set_key(cose, ctx->sender_context.sender_key, COSE_algorithm_AES_CCM_16_64_128_KEY_LEN);
+      if(nonces.kid_context_nonce != NULL){
+        cose->partial_iv_len = 1;
+        uint8_t iv_value = 0x00; // The Partial IV value
+        memset(cose->partial_iv, iv_value, sizeof(cose->partial_iv));        
+        uint8_t *nonce_cbor = malloc((nonces.len_kid_context_nonce + 1) * sizeof(uint8_t));
+        nanocbor_encoder_t enc;
+        nanocbor_encoder_init(&enc, nonce_cbor, ((nonces.len_kid_context_nonce + 1) * sizeof(uint8_t)));
+        if(nanocbor_put_bstr(&enc,nonces.kid_context_nonce,(nonces.len_kid_context_nonce * sizeof(uint8_t)))!= NANOCBOR_OK){
+          LOG_ERR("Did not encode byte string");
+        }
+        
+        cose->kid_context = nonce_cbor;
+        cose->kid_context_len = (nonces.len_kid_context_nonce + 1);
+        
+      }
     } else { /* receiving */
       assert(cose->partial_iv_len > 0); /* Partial IV set when getting seq from exchange. */
       cose_encrypt0_set_key_id(cose, ctx->sender_context.sender_id, ctx->sender_context.sender_id_len);
@@ -571,7 +599,6 @@ oscore_prepare_message(coap_message_t *coap_pkt, uint8_t *buffer)
   }
 
   oscore_populate_cose(coap_pkt, cose, coap_pkt->security_context, true);
-
   /* 2 Compose the AAD and the plaintext, as described in Sections 5.3 and 5.4.*/
   size_t plaintext_len = oscore_serializer(coap_pkt, content_buffer, ROLE_CONFIDENTIAL);
   if(plaintext_len > COAP_MAX_CHUNK_SIZE){
@@ -587,11 +614,26 @@ oscore_prepare_message(coap_message_t *coap_pkt, uint8_t *buffer)
   if (oscore_prepare_aad(coap_pkt, cose, &aad_enc, true) != NANOCBOR_OK) {
     return INTERNAL_SERVER_ERROR_5_00;
   }
-
   cose_encrypt0_set_aad(cose, aad_buffer, nanocbor_encoded_len(&aad_enc));
+
+  // Nonces saved for appendix b.2 use. 
+  app_b2_nonces_t nonces = oscore_appendixb2_get_nonces();  
+
+
+  if(nonces.aead_nonce == NULL){
+    oscore_generate_nonce(cose, coap_pkt, nonce_buffer, COSE_algorithm_AES_CCM_16_64_128_IV_LEN);
+    cose_encrypt0_set_nonce(cose, nonce_buffer, COSE_algorithm_AES_CCM_16_64_128_IV_LEN);
+  } else {
+    cose->nonce = nonces.aead_nonce;
+    cose->nonce_len = nonces.len_aead_nonce;
+    printf_hex_detailed("response message key_id", cose->key_id, cose->key_id_len);
+    printf_hex_detailed("partial_iv", cose->partial_iv, cose->partial_iv_len);
+    printf_hex_detailed("common_iv", coap_pkt->security_context->common_iv, CONTEXT_INIT_VECT_LEN);
+    printf_hex_detailed("Nonce or IV", nonces.aead_nonce, nonces.len_aead_nonce);
+
+    
+  }
   
-  oscore_generate_nonce(cose, coap_pkt, nonce_buffer, COSE_algorithm_AES_CCM_16_64_128_IV_LEN);
-  cose_encrypt0_set_nonce(cose, nonce_buffer, COSE_algorithm_AES_CCM_16_64_128_IV_LEN);
   
   if(coap_is_request(coap_pkt)) {
     if(!oscore_set_exchange(coap_pkt->token, coap_pkt->token_len, ctx->sender_context.seq, ctx)) {
@@ -753,7 +795,6 @@ oscore_generate_nonce(const cose_encrypt0_t *ptr, const coap_message_t *coap_pkt
   for(i = 0; i < size; i++) {
     buffer[i] ^= (uint8_t)coap_pkt->security_context->common_iv[i];
   }
-
   printf_hex_detailed("result", buffer, size);
 }
 
@@ -805,6 +846,7 @@ oscore_increment_sender_seq(oscore_ctx_t *ctx)
   ctx->sender_context.seq++;
   return ctx->sender_context.seq < OSCORE_SEQ_MAX;
 }
+
 
 void
 oscore_init(void)

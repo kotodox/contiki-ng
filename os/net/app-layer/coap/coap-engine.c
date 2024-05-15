@@ -204,6 +204,7 @@ coap_receive(const coap_endpoint_t *src,
   message[0] = *msg;
 #else
   static coap_message_t response[1];
+  
   response[0] = *response;
 #endif /*WITH_GROUPCOM*/
   coap_transaction_t *transaction = NULL;
@@ -300,10 +301,50 @@ coap_receive(const coap_endpoint_t *src,
         if(message->token_len) {
           coap_set_token(response, message->token, message->token_len);
         }
+// TODO kan vara här 
 
 #ifdef WITH_OSCORE 
         if(coap_is_option(message, COAP_OPTION_OSCORE)){
-          coap_set_oscore(response, message->security_context);
+          app_b2_nonces_t nonces = oscore_appendixb2_get_nonces();
+          const uint8_t *old_nonce = nonces.kid_context_nonce;
+          const uint8_t old_nonce_len = nonces.len_kid_context_nonce;
+          if(old_nonce != NULL){
+            const uint8_t *master_secret = message->security_context->master_secret;
+            const uint8_t *master_salt = message->security_context->master_salt;
+            uint8_t master_secret_len = message->security_context->master_secret_len;
+            uint8_t master_salt_len = message->security_context->master_salt_len;
+            const uint8_t *sender_id = message->security_context->sender_context.sender_id;
+            uint8_t sender_id_len = message->security_context->sender_context.sender_id_len;
+            const uint8_t *reciever_id = message->security_context->recipient_context.recipient_id;
+            uint8_t reciever_id_len = message->security_context->recipient_context.recipient_id_len;
+            oscore_free_ctx(message->security_context);
+            static oscore_ctx_t ctx_new;
+            //oscore_ctx_t *ctx;
+            uint8_t *new_nonce = malloc(old_nonce_len * sizeof(uint8_t));
+            uint8_t len_new_nonce = old_nonce_len;
+            for(int i=0;i<len_new_nonce;i++){
+              new_nonce[i] = (uint8_t)random_rand();
+            }
+            uint8_t id_context_len = len_new_nonce + old_nonce_len;
+            uint8_t *new_id_context = malloc((old_nonce_len + len_new_nonce) * sizeof(uint8_t));
+            memcpy(new_id_context,new_nonce,len_new_nonce);
+            memcpy(new_id_context + len_new_nonce,old_nonce,old_nonce_len);
+            oscore_appendixb2_set_nonce_kidcontext(new_nonce, len_new_nonce);
+            /*
+            LOG_DBG(" \n");
+            LOG_DBG("Id context is: \n");
+            for (size_t i = 0; i < id_context_len; ++i) {
+              LOG_DBG("%d ", new_id_context[i]);
+            }*/
+            LOG_DBG(" \n");
+            oscore_derive_ctx(&ctx_new, master_secret, master_secret_len, master_salt, master_salt_len, 10, sender_id, sender_id_len, reciever_id, reciever_id_len, new_id_context, id_context_len);
+            message->security_context = &ctx_new;
+            coap_set_oscore(response, &ctx_new);
+          }
+          else
+          {
+            coap_set_oscore(response, message->security_context);
+          }
         }
 #endif /* WITH_OSCORE */
 

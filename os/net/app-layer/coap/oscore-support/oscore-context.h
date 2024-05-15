@@ -114,6 +114,15 @@ typedef struct oscore_exchange {
   uint8_t token_len;
 } oscore_exchange_t;
 
+typedef struct app_b2_nonces{
+  const  uint8_t *kid_context_nonce;
+  uint8_t len_kid_context_nonce;
+  uint8_t *aead_nonce;
+  uint8_t len_aead_nonce;
+  const  uint8_t *aad;
+  uint8_t len_aad;
+} app_b2_nonces_t;
+
 void oscore_ctx_store_init(void);
 
 #ifdef WITH_GROUPCOM
@@ -150,6 +159,18 @@ void oscore_derive_ctx(oscore_ctx_t *common_ctx,
 void oscore_free_ctx(oscore_ctx_t *ctx);
 
 oscore_ctx_t *oscore_find_ctx_by_rid(const uint8_t *rid, uint8_t rid_len);
+
+
+void oscore_appendixb2_set_nonce_kidcontext(const uint8_t *new_nonce, uint8_t len_nonce);
+
+
+void oscore_appendixb2_set_nonce_aead(const uint8_t *new_nonce, uint8_t len_nonce);
+
+void oscore_appendixb2_set_aad(const uint8_t *new_nonce, uint8_t len_nonce);
+
+app_b2_nonces_t oscore_appendixb2_get_nonces(void);
+
+
 
 /* Token <=> SEQ association */
 void oscore_exchange_store_init(void);

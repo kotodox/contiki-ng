@@ -91,4 +91,9 @@ bool oscore_is_request_protected(const coap_message_t *request);
 /* Initialize the context storage, the token - seq association storrage and the URI - context association storage. */
 void oscore_init(void);
 
+
+
+
+
+
 #endif /* _OSCORE_H */

@@ -112,7 +112,7 @@ PROCESS_THREAD(plugtest_server, ev, data)
   coap_activate_resource(&res_hello6, "oscore/hello/6");
   coap_activate_resource(&res_hello7, "oscore/hello/7");
   coap_activate_resource(&res_test,   "oscore/test");
-  coap_activate_resource(&res_appb2,  "oscore/app_b2");
+  coap_activate_resource(&res_appb2,  "rederivation/blackhole");
   
   oscore_protect_resource(&res_hello1);
   oscore_protect_resource(&res_hello2);
@@ -124,10 +124,6 @@ PROCESS_THREAD(plugtest_server, ev, data)
 
   /* Define application-specific events here. */
   while(1) {
-    unsigned short nonce = random_rand();
-    printf("do we arrive here\n");
-    printf("nonce: %d \n" ,nonce);
-
     PROCESS_WAIT_EVENT();
 
   }                             /* while (1) */
