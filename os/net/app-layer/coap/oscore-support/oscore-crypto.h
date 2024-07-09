@@ -45,7 +45,7 @@
 
 
 #ifndef HKDF_INFO_MAXLEN
-#define HKDF_INFO_MAXLEN 25
+#define HKDF_INFO_MAXLEN 64  /*Kommer chockhöja den här och måste undersöka vad som händer när jag gör det*/
 #endif /*HKDF_INFO_MAXLEN*/
 
 #ifndef HKDF_OUTPUT_MAXLEN
@@ -102,6 +102,10 @@ int hkdf(
 	const uint8_t *ikm, uint8_t ikm_len,
 	const uint8_t *info, uint8_t info_len,
 	uint8_t *okm, uint8_t okm_len);
+
+
+int
+hkdf_expand(const uint8_t *prk, const uint8_t prk_len,const uint8_t *info, uint8_t info_len, uint8_t *okm, uint8_t okm_len);
 
 int
 oscore_esDSA_keypair(int8_t alg, int8_t alg_param, uint8_t *private_key, uint8_t *public_key, uint8_t *es256_seed);

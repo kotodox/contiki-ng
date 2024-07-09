@@ -119,9 +119,17 @@ typedef struct app_b2_nonces{
   uint8_t len_kid_context_nonce;
   uint8_t *aead_nonce;
   uint8_t len_aead_nonce;
-  const  uint8_t *aad;
-  uint8_t len_aad;
 } app_b2_nonces_t;
+
+typedef struct kudos_variables{
+  bool kudos_running;
+  uint8_t *N;
+  uint8_t X;
+  uint8_t *y_nonce;
+  uint8_t len_y_nonce;
+  oscore_ctx_t *ctx_old;
+
+} kudos_variables_t;
 
 void oscore_ctx_store_init(void);
 
@@ -156,21 +164,37 @@ void oscore_derive_ctx(oscore_ctx_t *common_ctx,
   const uint8_t *id_context, uint8_t id_context_len);
 #endif
 
+void oscore_kudos_free_ctx(oscore_ctx_t *ctx);
+
 void oscore_free_ctx(oscore_ctx_t *ctx);
 
 oscore_ctx_t *oscore_find_ctx_by_rid(const uint8_t *rid, uint8_t rid_len);
 
+void oscore_kudos_set_old_ctx(oscore_ctx_t *ctx);
 
 void oscore_appendixb2_set_nonce_kidcontext(const uint8_t *new_nonce, uint8_t len_nonce);
 
 
 void oscore_appendixb2_set_nonce_aead(const uint8_t *new_nonce, uint8_t len_nonce);
 
-void oscore_appendixb2_set_aad(const uint8_t *new_nonce, uint8_t len_nonce);
 
 app_b2_nonces_t oscore_appendixb2_get_nonces(void);
 
 
+//sätter X och N, ska döpas om eller raderas
+void oscore_kudos_set_N_and_X(uint8_t *new_nonce, uint8_t len_nonce);
+
+void oscore_kudos_set_nonce_y(uint8_t *new_nonce, uint8_t len_nonce);
+
+void oscore_kudos_true(void);
+
+void oscore_kudos_false(void);
+
+oscore_ctx_t *oscore_updateCtx(const uint8_t *X, uint8_t len_X, const uint8_t *N,const uint8_t len_N, oscore_ctx_t *old_Ctx);
+
+kudos_variables_t oscore_kudos_get_variables(void);
+
+uint8_t *oscore_cbor_byte_string(const uint8_t *byte_string, const uint8_t len_byte_string);
 
 /* Token <=> SEQ association */
 void oscore_exchange_store_init(void);

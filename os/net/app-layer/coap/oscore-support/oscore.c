@@ -101,6 +101,19 @@ printf_hex_detailed(const char* name, const uint8_t *data, size_t len)
   LOG_DBG_("\n");
 }
 
+
+
+static void 
+print_bits(uint8_t byte) 
+{
+    for (int i = 7; i >= 0; i--) {  // Start from the most significant bit
+        LOG_DBG("%u", (byte >> i) & 0x01);
+    }
+    LOG_DBG("\n\n");
+}
+
+
+
 static bool
 coap_is_request(const coap_message_t *coap_pkt)
 {
@@ -175,7 +188,19 @@ oscore_encode_option_value(uint8_t *option_buffer, const cose_encrypt0_t *cose, 
   if(cose->partial_iv_len > 5){
     return 0;
   }
+  kudos_variables_t kudos_vars = oscore_kudos_get_variables();
+  // kan nog ändras till att kolla om COSE objektet innehåller x och n
+  
+  
   option_buffer[0] = 0;
+  option_buffer[1] = 0;
+
+  if(kudos_vars.kudos_running == true){
+    option_buffer[0] |= 0x80;
+    offset += 1;
+    oscore_kudos_false();
+  }
+
   if(cose->partial_iv_len > 0 && cose->partial_iv != NULL && include_partial_iv && cose->partial_iv_len < 6) {
     option_buffer[0] |= (0x07 & cose->partial_iv_len);
     memcpy(&(option_buffer[offset]), cose->partial_iv, cose->partial_iv_len);
@@ -208,6 +233,15 @@ oscore_encode_option_value(uint8_t *option_buffer, const cose_encrypt0_t *cose, 
     offset += cose->kid_context_len;
   }
 
+  if((cose->N != NULL)){
+    option_buffer[1] |= 0x01;
+    uint8_t m = (cose->X & 0x0f);
+    memcpy(&(option_buffer[offset]),&cose->X,1); /*The len is hardcoded as 1 because according to KUDOS it always is like that*/
+    offset += 1;
+    memcpy(&(option_buffer[offset]),cose->N,m+1);
+    offset += m+1;
+  }
+
   if(cose->key_id_len > 0 && cose->key_id != NULL) {
     option_buffer[0] |= 0x08;
     memcpy(&(option_buffer[offset]), cose->key_id, cose->key_id_len);
@@ -217,6 +251,8 @@ oscore_encode_option_value(uint8_t *option_buffer, const cose_encrypt0_t *cose, 
   LOG_DBG("OSCORE encoded option value, len %d, full [",offset);
   LOG_DBG_BYTES(option_buffer, offset);
   LOG_DBG_("]\n");
+
+  print_bits(option_buffer[0]);
 
   if(offset == 1 && option_buffer[0] == 0) { /* If option_value is 0x00 it should be empty. */
 	  return 0;
@@ -232,7 +268,7 @@ oscore_decode_option_value(uint8_t *option_value, int option_len, cose_encrypt0_
   } else if(option_len > 255 || option_len < 0 ||
             (option_value[0] & 0x06) == 6 ||
             (option_value[0] & 0x07) == 7 ||
-            (option_value[0] & 0xE0) != 0) {
+            (option_value[0] & 0x60) != 0) {
     return BAD_OPTION_4_02;
   }
 
@@ -242,9 +278,15 @@ oscore_decode_option_value(uint8_t *option_value, int option_len, cose_encrypt0_
     return BAD_OPTION_4_02;
   }
 #endif
-
-  uint8_t offset = 1;
   
+  uint8_t offset = 1;
+
+  /* här måste kontrolleras om 8 extension flag biten i option är 1 och i 
+  så fall måste vi lägga till 8 bit extra på offset för att kontrollera extra option values.*/
+  if((option_value[0] & 0x80) != 0)
+  {
+    offset++;
+  }
   uint8_t partial_iv_len = (option_value[0] & 0x07);
   if(partial_iv_len != 0) {    
     if(offset + partial_iv_len > option_len) {
@@ -254,7 +296,11 @@ oscore_decode_option_value(uint8_t *option_value, int option_len, cose_encrypt0_
     cose_encrypt0_set_partial_iv(cose, &(option_value[offset]), partial_iv_len);
     offset += partial_iv_len;
   }
+
   
+  print_bits(option_value[0]);
+  
+
   /* If h-flag is set KID-Context field is present. */
   if((option_value[0] & 0x10) != 0) {
     uint8_t kid_context_len = option_value[offset];
@@ -262,15 +308,41 @@ oscore_decode_option_value(uint8_t *option_value, int option_len, cose_encrypt0_
     if (offset + kid_context_len > option_len) {
       return BAD_OPTION_4_02;
     }
-
     cose_encrypt0_set_kid_context(cose, &(option_value[offset]), kid_context_len);
     offset += kid_context_len;
   }
-  LOG_DBG("OSCORE kid context: %s",cose->kid_context);
-  LOG_DBG_("\n");
+
+  //kudos_variables_t kudos_var;
+  //uint8_t kudos_byte;
+  //kontrollera att nonce flag eller d-flag är satt i option
+  if((option_value[0] & 0x80) != 0) {  
+      if((option_value[1] & 0x01) != 0){
+        LOG_DBG("KUDOS request iniatied\n");
+        oscore_kudos_true();
+        uint8_t kudos_byte = option_value[offset];
+        offset++;
+        uint8_t m = (kudos_byte & 0x0f);
+        oscore_kudos_set_N_and_X(&(option_value[offset]), kudos_byte);
+        cose_encrypt0_set_x_and_n(cose, &(option_value[offset]), kudos_byte);
+        offset += (m + 1);
+        if((kudos_byte & 0x40) != 0 ){
+          //z = length of y nonce
+          uint8_t z = option_value[offset];
+          offset++;
+          oscore_kudos_set_nonce_y(&(option_value[offset]), z);
+          cose_encrypt0_set_y_nonce(cose, &(option_value[offset]), z);
+          offset += z; 
+        }
+      } else {
+    LOG_DBG("KUDOS request failed\n");
+    return BAD_OPTION_KUDOS;
+    }
+  } 
+  
   /* IF k-flag is set Key ID field is present. */
   if((option_value[0] & 0x08) != 0) {
     int kid_len = option_len - offset;
+    LOG_DBG("option_len: %u    offset: %u\n", option_len, offset);
     if (kid_len <= 0 || kid_len > UINT8_MAX) {
       return BAD_OPTION_4_02;
     }
@@ -294,7 +366,7 @@ oscore_decode_message(coap_message_t *coap_pkt)
   cose_sign1_t sign[1];
   cose_sign1_init(sign);
 #endif /*WITH_GROUPCOM*/
-
+  
   printf_hex_detailed("object_security", coap_pkt->object_security, coap_pkt->object_security_len);
 
   /* Options are discarded later when they are overwritten. This should be improved */
@@ -304,7 +376,7 @@ oscore_decode_message(coap_message_t *coap_pkt)
 	  coap_error_message = "OSCORE option could not be parsed.";
 	  return ret;
   }
-
+  
   if(coap_is_request(coap_pkt)) {
 #ifdef WITH_GROUPCOM
     const uint8_t *group_id; /*used to extract gid from OSCORE option*/
@@ -347,19 +419,26 @@ oscore_decode_message(coap_message_t *coap_pkt)
       uint8_t sender_id_len = ctx->sender_context.sender_id_len;
       const uint8_t *reciever_id = ctx->recipient_context.recipient_id;
       uint8_t reciever_id_len = ctx->recipient_context.recipient_id_len;
-      for (size_t i = 0; i < len_of_kid; ++i) {
-          LOG_DBG("%d ", nonce[i]);
-      }
-      LOG_DBG("\n");
       oscore_free_ctx(ctx);
       static oscore_ctx_t ctx_new;
       ctx = NULL;
       oscore_derive_ctx(&ctx_new, master_secret, master_secret_len, master_salt, master_salt_len, 10, sender_id, sender_id_len, reciever_id, reciever_id_len, nonce, len_of_kid);
       ctx = oscore_find_ctx_by_rid(reciever_id, reciever_id_len);
-      
-      
     }
 
+    //need to save ctx_old to change back
+    oscore_ctx_t *ctx_old = ctx;
+    
+    if(cose->N != NULL){
+    //if(oscore_kudos_get_variables().kudos_running){
+      uint8_t len_N = (cose->X & 0x0f) + 1;
+      printf_hex_detailed("Before kudos free", ctx_old->master_secret,ctx_old->master_secret_len);
+      ctx = oscore_updateCtx(&(cose->X), sizeof(uint8_t),cose->N,len_N, ctx_old);
+      oscore_kudos_set_old_ctx(ctx_old);
+      oscore_kudos_free_ctx(ctx_old); 
+      printf_hex_detailed("After kudos free",ctx_old->master_secret,ctx_old->master_secret_len);
+
+    }
 #ifdef WITH_GROUPCOM
     uint8_t gid_len = cose_encrypt0_get_kid_context(cose, &group_id);
     if(gid_len == 0) {
@@ -441,12 +520,17 @@ oscore_decode_message(coap_message_t *coap_pkt)
   cose_encrypt0_set_alg(cose, ctx->alg);
   
   //Här printar vi partial iv från client side
+  //TODO ska inte spara när det är KUDOS.
   oscore_generate_nonce(cose, coap_pkt, nonce_buffer, sizeof(nonce_buffer));
-  uint8_t app_b2_nonce[13];
-  memcpy(app_b2_nonce,nonce_buffer,sizeof(nonce_buffer) );
-  oscore_appendixb2_set_nonce_aead(app_b2_nonce, sizeof(nonce_buffer));
-  uint8_t *nonce = oscore_appendixb2_get_nonces().aead_nonce;
-  printf_hex_detailed("saved nonce: ", nonce, sizeof(nonce_buffer));
+
+  if(oscore_appendixb2_get_nonces().kid_context_nonce != NULL){
+    uint8_t app_b2_nonce[13];
+    memcpy(app_b2_nonce,nonce_buffer,sizeof(nonce_buffer) );
+    oscore_appendixb2_set_nonce_aead(app_b2_nonce, sizeof(nonce_buffer));
+    uint8_t *nonce = oscore_appendixb2_get_nonces().aead_nonce;
+    printf_hex_detailed("saved nonce: ", nonce, sizeof(nonce_buffer));
+  }
+  
 
   cose_encrypt0_set_nonce(cose, nonce_buffer, sizeof(nonce_buffer));
 
@@ -504,7 +588,6 @@ oscore_decode_message(coap_message_t *coap_pkt)
      cose_sign1_verify(sign);//we do not care about the response; the thing will be in progress
   } 
 #endif /* WITH_GROUPCOM */
-
   return oscore_parser(coap_pkt, cose->content, res, ROLE_CONFIDENTIAL);
 }
 
@@ -512,7 +595,6 @@ static void
 oscore_populate_cose(const coap_message_t *pkt, cose_encrypt0_t *cose, const oscore_ctx_t *ctx, bool sending)
 {
   cose_encrypt0_set_alg(cose, ctx->alg);
-
 #ifdef WITH_GROUPCOM
   if(sending){//recent_seq is the one that actually gets updated
     cose->partial_iv_len = u64tob(ctx->recipient_context.sliding_window.recent_seq, cose->partial_iv);
@@ -535,8 +617,9 @@ oscore_populate_cose(const coap_message_t *pkt, cose_encrypt0_t *cose, const osc
     }
   } else { /* coap is response */
     if(sending){
-      app_b2_nonces_t nonces = oscore_appendixb2_get_nonces();  
-      if(nonces.kid_context_nonce == NULL){
+      app_b2_nonces_t nonces = oscore_appendixb2_get_nonces();
+      kudos_variables_t kudos_var = oscore_kudos_get_variables();
+      if((nonces.kid_context_nonce == NULL) && (kudos_var.kudos_running !=true)){
         cose->partial_iv_len = u64tob(ctx->recipient_context.sliding_window.recent_seq, cose->partial_iv);
       }
       cose_encrypt0_set_key_id(cose, ctx->recipient_context.recipient_id, ctx->recipient_context.recipient_id_len);
@@ -551,10 +634,15 @@ oscore_populate_cose(const coap_message_t *pkt, cose_encrypt0_t *cose, const osc
         if(nanocbor_put_bstr(&enc,nonces.kid_context_nonce,(nonces.len_kid_context_nonce * sizeof(uint8_t)))!= NANOCBOR_OK){
           LOG_ERR("Did not encode byte string");
         }
-        
         cose->kid_context = nonce_cbor;
         cose->kid_context_len = (nonces.len_kid_context_nonce + 1);
-        
+      }
+      if(kudos_var.kudos_running){
+        cose->partial_iv_len = 1;
+        uint8_t iv_value = 0x00; // The Partial IV value
+        memset(cose->partial_iv, iv_value, sizeof(cose->partial_iv));        
+        cose->X = kudos_var.X;
+        cose->N = kudos_var.N;
       }
     } else { /* receiving */
       assert(cose->partial_iv_len > 0); /* Partial IV set when getting seq from exchange. */
@@ -585,7 +673,7 @@ oscore_prepare_message(coap_message_t *coap_pkt, uint8_t *buffer)
 #endif /*WITH_GROUPCOM*/
 
 #ifndef WITH_GROUPCOM
-  uint8_t option_value_buffer[15]; /* When using Group-OSCORE this has to be global. */
+  uint8_t option_value_buffer[16]; /* When using Group-OSCORE this has to be global. */
   uint8_t content_buffer[COAP_MAX_CHUNK_SIZE + COSE_algorithm_AES_CCM_16_64_128_TAG_LEN];
 #endif /* not WITH_GROUPCOM */
   uint8_t aad_buffer[35];
@@ -630,8 +718,6 @@ oscore_prepare_message(coap_message_t *coap_pkt, uint8_t *buffer)
     printf_hex_detailed("partial_iv", cose->partial_iv, cose->partial_iv_len);
     printf_hex_detailed("common_iv", coap_pkt->security_context->common_iv, CONTEXT_INIT_VECT_LEN);
     printf_hex_detailed("Nonce or IV", nonces.aead_nonce, nonces.len_aead_nonce);
-
-    
   }
   
   

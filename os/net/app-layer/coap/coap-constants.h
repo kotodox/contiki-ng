@@ -111,6 +111,8 @@ typedef enum {
   GATEWAY_TIMEOUT_5_04 = 164,   /* GATEWAY_TIMEOUT */
   PROXYING_NOT_SUPPORTED_5_05 = 165,    /* PROXYING_NOT_SUPPORTED */
 
+  BAD_OPTION_KUDOS = 166, /*No d-flag set but extension flag set */
+
   /* Erbium errors */
   MEMORY_ALLOCATION_ERROR = 192,
   PACKET_SERIALIZATION_ERROR,

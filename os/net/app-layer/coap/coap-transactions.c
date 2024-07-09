@@ -93,6 +93,16 @@ coap_new_transaction(uint16_t mid, const coap_endpoint_t *endpoint)
   return t;
 }
 /*---------------------------------------------------------------------------*/
+
+/* Temporary function to print IP adresses*/
+#include <arpa/inet.h>
+const char *ip6addr_to_str(const uip_ip6addr_t *ipaddr, char *buffer, size_t buflen) {
+    snprintf(buffer, buflen, "%x:%x:%x:%x:%x:%x:%x:%x",
+             ntohs(ipaddr->u16[0]), ntohs(ipaddr->u16[1]), ntohs(ipaddr->u16[2]), ntohs(ipaddr->u16[3]),
+             ntohs(ipaddr->u16[4]), ntohs(ipaddr->u16[5]), ntohs(ipaddr->u16[6]), ntohs(ipaddr->u16[7]));
+    return buffer;
+}
+
 void
 coap_send_transaction(coap_transaction_t *t)
 {
@@ -102,8 +112,17 @@ coap_send_transaction(coap_transaction_t *t)
      ((COAP_HEADER_TYPE_MASK & t->message[0]) >> COAP_HEADER_TYPE_POSITION)) {
     if(t->retrans_counter <= COAP_MAX_RETRANSMIT) {
       /* not timed out yet */
+      //t->endpoint.port = 5683;
       coap_sendto(&t->endpoint, t->message, t->message_len);
+
+
+      /*Temporär för felsökning*/
       LOG_DBG("Keeping transaction %u\n", t->mid);
+      LOG_DBG("endpoint port: %u\n", t->endpoint.port);
+      char ipaddr_str[40]; // Buffer large enough for an IPv6 address string
+      ip6addr_to_str(&t->endpoint.ipaddr, ipaddr_str, sizeof(ipaddr_str));
+      LOG_DBG("endpoint ip: %s\n", ipaddr_str);
+
 
       if(t->retrans_counter == 0) {
         coap_timer_set_callback(&t->retrans_timer, coap_retransmit_transaction);

@@ -104,7 +104,22 @@ void
 cose_encrypt0_set_kid_context(cose_encrypt0_t *ptr, const uint8_t *buffer, uint8_t size){
   ptr->kid_context = buffer;
   ptr->kid_context_len = size;
-} 
+}
+
+
+/* Function for KUDOS implementation*/
+void
+cose_encrypt0_set_x_and_n(cose_encrypt0_t *ptr, const uint8_t *buffer, uint8_t size){
+  ptr->N = buffer;
+  ptr->X = size;
+}
+
+/* Function for KUDOS implementation*/
+void
+cose_encrypt0_set_y_nonce(cose_encrypt0_t *ptr, const uint8_t *buffer, uint8_t size){
+  ptr->y_nonce = buffer;
+  ptr->len_y_nonce = size;
+}
 
 
 void

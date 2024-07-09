@@ -6,6 +6,7 @@
 ## can be loaded into the Java part of COOJA.
 
 EXPECTED_COOJA_VERSION = 2022052601
+## 2023090701
 
 ifndef CONTIKI
   $(error CONTIKI not defined!)

@@ -70,7 +70,8 @@ extern coap_resource_t
   res_hello6,
   res_hello7,
   res_test,
-  res_appb2;
+  res_appb2,
+  res_kudos;
 
 uint8_t master_secret[16] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10};
 uint8_t salt[8] = {0x9e, 0x7c, 0xa9, 0x22, 0x23, 0x78, 0x63, 0x40};
@@ -113,6 +114,7 @@ PROCESS_THREAD(plugtest_server, ev, data)
   coap_activate_resource(&res_hello7, "oscore/hello/7");
   coap_activate_resource(&res_test,   "oscore/test");
   coap_activate_resource(&res_appb2,  "rederivation/blackhole");
+  coap_activate_resource(&res_kudos,  "well-known/kudos");
   
   oscore_protect_resource(&res_hello1);
   oscore_protect_resource(&res_hello2);
@@ -121,6 +123,7 @@ PROCESS_THREAD(plugtest_server, ev, data)
   oscore_protect_resource(&res_hello7);
   oscore_protect_resource(&res_test);
   oscore_protect_resource(&res_appb2);
+  oscore_protect_resource(&res_kudos);
 
   /* Define application-specific events here. */
   while(1) {

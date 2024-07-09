@@ -63,13 +63,21 @@ MEMB(exchange_memb, oscore_exchange_t, TOKEN_SEQ_NUM);
 
 LIST(common_context_list);
 LIST(exchange_list);
+
 app_b2_nonces_t nonces = {
-        .kid_context_nonce = NULL,        // Pointer initialized to NULL
-        .len_kid_context_nonce = 0,       // Length initialized to 0
-        .aead_nonce = NULL,                // Pointer initialized to NULL
-        .len_aead_nonce = 0,                // Length initialized to 0
-        .aad = NULL,                // Pointer initialized to NULL
-        .len_aad = 0  
+  .kid_context_nonce = NULL,        // Pointer initialized to NULL
+  .len_kid_context_nonce = 0,       // Length initialized to 0
+  .aead_nonce = NULL,                // Pointer initialized to NULL
+  .len_aead_nonce = 0                // Length initialized to 0
+};
+
+kudos_variables_t kudos_nonces = {
+  .kudos_running= false,
+  .N = NULL,
+  .X = 0,
+  .y_nonce = NULL,
+  .len_y_nonce = 0,
+  .ctx_old = NULL
 };
 
 
@@ -110,9 +118,9 @@ compose_info(
 
   NANOCBOR_CHECK(nanocbor_fmt_array(&enc, 5));
   NANOCBOR_CHECK(nanocbor_put_bstr(&enc, id, id_len));
-
   if(id_context != NULL && id_context_len > 0) {
     NANOCBOR_CHECK(nanocbor_put_bstr(&enc, id_context, id_context_len));
+
   } else {
     NANOCBOR_CHECK(nanocbor_fmt_null(&enc));
   }
@@ -120,8 +128,52 @@ compose_info(
   NANOCBOR_CHECK(nanocbor_fmt_uint(&enc, alg));
   NANOCBOR_CHECK(nanocbor_put_tstr(&enc, kind));
   NANOCBOR_CHECK(nanocbor_fmt_uint(&enc, out_len));
-
   return nanocbor_encoded_len(&enc);
+}
+
+
+static uint8_t
+compose_Expandlabel(uint8_t *buffer, uint8_t buffer_len, char *label, const uint8_t *context, uint8_t context_len, uint8_t oscore_key_length)
+{ 
+
+  uint16_t oscore_key_lengthened = oscore_key_length; 
+  uint8_t zeros = 0;
+  uint8_t oscore_key_length_size = sizeof(uint16_t);
+  char pre_label[] = "oscore "; // Include the null terminator
+  uint8_t pre_label_len = strlen(pre_label);
+  uint8_t label_len = strlen(label);
+  
+  
+  char combined_label[pre_label_len + label_len + 1]; 
+  strcpy(combined_label, pre_label); 
+  strcat(combined_label, label); 
+  uint8_t combined_label_len = strlen(combined_label);
+
+  uint8_t expandlabel_len = oscore_key_length_size + combined_label_len + context_len ;
+
+  if (expandlabel_len > buffer_len) {
+    LOG_ERR("Expandlabel too long");
+  }
+
+  LOG_DBG("OSCORE_KEY_LENGTH : %u\n\n", oscore_key_lengthened);
+
+  // Store both bytes of oscore_key_lengthened
+  //memcpy(buffer, &oscore_key_lengthened, sizeof(oscore_key_lengthened)); 
+  memcpy(buffer, &zeros, 1);
+  memcpy(buffer + 1, &oscore_key_length, 1);
+
+
+  // Combine pre_label and label into a single string
+  memcpy(buffer + oscore_key_length_size, combined_label, combined_label_len);
+  memcpy(buffer + oscore_key_length_size + combined_label_len , context, context_len);
+  /*
+  
+  memcpy(buffer + oscore_key_length_size, pre_label, pre_label_len);
+  memcpy(buffer + oscore_key_length_size + pre_label_len, label, label_len);
+  memcpy(buffer + oscore_key_length_size + pre_label_len + label_len, context, context_len);
+  */
+
+  return expandlabel_len;
 }
 
 static bool
@@ -162,12 +214,15 @@ oscore_derive_ctx(oscore_ctx_t *common_ctx,
   printf_hex_detailed("master secret: ", master_secret, master_secret_len);
   printf_hex_detailed("master salt: ", master_salt, master_salt_len);
   printf_hex_detailed("id_context: ", id_context, id_context_len);
+  printf_hex_detailed("sid: ", sid, sid_len);
+  printf_hex_detailed("rid: ", rid, rid_len);
   
 
 
 
   /* sender_key */
   info_len = compose_info(info_buffer, sizeof(info_buffer), alg, sid, sid_len, id_context, id_context_len, "Key", CONTEXT_KEY_LEN);
+  LOG_DBG("info_len =%u \n\n", info_len );
   assert(info_len > 0);
   hkdf(master_salt, master_salt_len,
        master_secret, master_secret_len,
@@ -214,6 +269,7 @@ oscore_derive_ctx(oscore_ctx_t *common_ctx,
   list_add(common_context_list, common_ctx);
 }
 
+
 void
 oscore_free_ctx(oscore_ctx_t *ctx)
 {
@@ -232,6 +288,55 @@ oscore_find_ctx_by_rid(const uint8_t *rid, uint8_t rid_len)
   }
   return NULL;
 } 
+
+oscore_ctx_t *
+oscore_updateCtx(const uint8_t *X,uint8_t len_X, const uint8_t *N,uint8_t len_N, oscore_ctx_t *old_Ctx)
+{
+
+
+  static oscore_ctx_t CTX_OUT;     // The new Security Context
+  uint8_t *MSECRET_NEW;   // The new Master Secret
+  const uint8_t *MSALT_NEW = N;    // The new Master Salt  
+  uint8_t X_cbor_len = len_X + 1;
+  uint8_t *X_cbor;
+  uint8_t N_cbor_len = len_N + 1;
+  if(len_N > 23){
+    N_cbor_len += 2;
+  }
+  uint8_t *N_cbor;
+  uint8_t len_X_N = X_cbor_len + N_cbor_len; 
+  uint8_t *X_N = malloc(len_X_N * sizeof(uint8_t));
+  
+  X_cbor = oscore_cbor_byte_string(X,len_X);
+  N_cbor = oscore_cbor_byte_string(N, len_N);
+  memcpy(X_N,X_cbor,X_cbor_len);
+  memcpy(X_N + X_cbor_len,N_cbor,N_cbor_len);
+  
+  
+  uint8_t oscore_key_length = old_Ctx->master_secret_len;
+
+  char *label = "key update";
+  uint8_t expandlabel[HKDF_INFO_MAXLEN];
+  uint8_t expandlabel_len = compose_Expandlabel(expandlabel,HKDF_INFO_MAXLEN, label, X_N, len_X_N, oscore_key_length);
+  MSECRET_NEW = malloc(oscore_key_length*sizeof(u_int8_t));
+  printf_hex_detailed("X_N is: ",X_N,len_X_N);
+  LOG_DBG("\n");
+  const uint8_t *sender_id = old_Ctx->sender_context.sender_id;
+  uint8_t sender_id_len = old_Ctx->sender_context.sender_id_len;
+  const uint8_t *reciever_id = old_Ctx->recipient_context.recipient_id;
+  uint8_t reciever_id_len = old_Ctx->recipient_context.recipient_id_len;
+  uint8_t alg = old_Ctx->alg;
+  printf_hex_detailed("old secret :",old_Ctx->master_secret, oscore_key_length );
+  LOG_DBG("\n");
+  hkdf_expand(old_Ctx->master_secret, oscore_key_length,expandlabel, expandlabel_len, MSECRET_NEW, oscore_key_length);
+  printf_hex_detailed("Master secret new : ", MSECRET_NEW, oscore_key_length);
+  LOG_DBG("\n");
+  oscore_kudos_free_ctx(old_Ctx);
+  oscore_derive_ctx(&CTX_OUT, MSECRET_NEW, oscore_key_length, MSALT_NEW, len_N, alg, sender_id, sender_id_len,reciever_id, reciever_id_len, NULL, 0 );
+
+  return &CTX_OUT;
+}
+
 
 /* Token <=> SEQ association */
 void
@@ -314,11 +419,69 @@ oscore_appendixb2_set_nonce_aead(const uint8_t *new_nonce, uint8_t len_nonce)
 }
 
 void
-oscore_appendixb2_set_aad(const uint8_t *new_nonce, uint8_t len_nonce)
+oscore_kudos_set_N_and_X(uint8_t *new_nonce, uint8_t X)
 {
-  nonces.aad = new_nonce;
-  nonces.len_aad = len_nonce;
+  kudos_nonces.N = malloc(sizeof(uint8_t ) * ((X & 0x0f) + 1));
+  memcpy(kudos_nonces.N,new_nonce,(X & 0x0f) + 1);
+  kudos_nonces.X = X;
 }
+
+void
+oscore_kudos_set_nonce_y(uint8_t *new_nonce, uint8_t len_nonce)
+{
+  kudos_nonces.y_nonce = malloc(sizeof(uint8_t ) * len_nonce);
+  memcpy(kudos_nonces.y_nonce,new_nonce,len_nonce);
+  kudos_nonces.len_y_nonce = len_nonce;
+}
+
+void
+oscore_kudos_true(void)
+{
+  kudos_nonces.kudos_running = true;
+}
+
+void
+oscore_kudos_false(void)
+{
+  kudos_nonces.kudos_running = false;
+}
+
+kudos_variables_t
+oscore_kudos_get_variables(void)
+{
+  return kudos_nonces;
+}
+
+void
+oscore_kudos_free_ctx(oscore_ctx_t *ctx)
+{
+  list_remove(common_context_list, ctx); 
+}
+
+void
+oscore_kudos_set_old_ctx(oscore_ctx_t *ctx)
+{
+  kudos_nonces.ctx_old = ctx;
+}
+
+uint8_t *
+oscore_cbor_byte_string(const uint8_t *byte_string, const uint8_t len_byte_string)
+{ 
+  uint8_t enc_byte_string_len; 
+  if(len_byte_string > 23){
+    enc_byte_string_len = len_byte_string + 2;
+  }else {
+    enc_byte_string_len = len_byte_string + 1;
+  }
+  uint8_t *enc_byte_string = malloc(enc_byte_string_len * sizeof(uint8_t));
+  nanocbor_encoder_t enc;
+  nanocbor_encoder_init(&enc, enc_byte_string , (enc_byte_string_len * sizeof(uint8_t)));
+  if(nanocbor_put_bstr(&enc, byte_string,len_byte_string * sizeof(uint8_t))!= NANOCBOR_OK){
+    LOG_ERR("Did not encode byte string");
+  }
+  return enc_byte_string;
+}
+
 
 app_b2_nonces_t
 oscore_appendixb2_get_nonces(void)

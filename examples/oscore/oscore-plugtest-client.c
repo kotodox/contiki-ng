@@ -45,6 +45,7 @@
 #include "dev/button-sensor.h"
 #include "plugtest_resources.h"
 #include "appendix_b2.h"
+#include "res_kudos.h"
 
 
 #ifdef WITH_OSCORE
@@ -67,7 +68,7 @@ uint8_t receiver_id[] = { 0x01};
 
 /* FIXME: This server address is hard-coded for Cooja and link-local for unconnected border router. */
 //#define SERVER_EP "coap://[fe80::202:0002:0002:0002]" //Cooja simulation address 
-#define SERVER_EP "coap://[fd00::302:304:506:708]" //Ip for plugtest server
+#define SERVER_EP "coap://[0:0:0:0:0:0:0:0]:5683" //Ip for plugtest server  coap://
 
 
 uint8_t test = 0;
@@ -93,9 +94,7 @@ PROCESS_THREAD(er_example_client, ev, data)
 
   static coap_message_t request[1];      /* This way the packet can be treated as pointer as usual. */
   static coap_endpoint_t server_ep;
-
   coap_endpoint_parse(SERVER_EP, strlen(SERVER_EP), &server_ep);
-
   #ifdef WITH_OSCORE
   static oscore_ctx_t context;
   oscore_derive_ctx(&context, master_secret, 16, salt, 8, 10, sender_id, 1, receiver_id, 1, NULL, 0);
@@ -116,7 +115,7 @@ PROCESS_THREAD(er_example_client, ev, data)
   
   while(1) {
     PROCESS_YIELD();
-
+    
     if(etimer_expired(&et)) {
       switch ( test ) {
         case 0:

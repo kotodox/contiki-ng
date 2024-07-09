@@ -4,6 +4,12 @@
 extern uint8_t test;
 extern uint8_t failed_tests;
 
+void test_kudos(coap_message_t* request);
+void test_kudos_handler(void* response);
+
+void test_appendixb2(coap_message_t* request);
+void test_appendixb2_handler(void* response);
+
 void test0_a(coap_message_t* request);
 void test0_a_handler(void* response);
 

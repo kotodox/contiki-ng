@@ -8,13 +8,54 @@
 
 //static coap_observee_t *obs;
 
-char *urls[10] = { "/oscore/hello/coap", "/oscore/hello/1", "/oscore/hello/2", "/oscore/hello/3", "/oscore/observe", "/oscore/hello/6", "/oscore/hello/7", "/oscore/test","/rederivation/blackhole", "oscore/kudos"};
+char *urls[10] = { "/oscore/hello/coap", "/oscore/hello/1", "/oscore/hello/2", "/oscore/hello/3", "/oscore/observe", "/oscore/hello/6", "/oscore/hello/7", "/oscore/test","/rederivation/blackhole/", "well-known/kudos/"};
 uint8_t rid[] = { 0x73, 0x65, 0x72, 0x76, 0x65, 0x72 };
 
 
-void test_kudos(coap_message_t* request){
+void test_appendixb2(coap_message_t* request){
+  printf("\n\nTest Appendix\n");
   coap_init_message(request, COAP_TYPE_CON, COAP_GET, 0);
   coap_set_header_uri_path(request, urls[8]);
+}
+
+void test_appendixb2_handler(void* response){
+  printf("Test appendixb2: Receiving Response!\n");
+//return;
+  const uint8_t *response_payload;
+  const char desired[] = "Hello World!";
+  int len = coap_get_payload(response, &response_payload);
+  int res = strncmp( desired, (char*)response_payload, strlen(desired));
+  if(res == 0){
+    printf("Test 0a: PASSED!\n");
+  }else {
+    printf("Test 0a: FAILED!\n");
+    printf("\t Expected result: \"Hello World!\" but was: ");
+    printf("%.*s\n", len, response_payload);
+    failed_tests++;
+  }
+}
+
+void test_kudos(coap_message_t* request){
+  printf("\n\nTest kudos: Starting!\n");
+  coap_init_message(request, COAP_TYPE_CON, COAP_GET, 0);
+  coap_set_header_uri_path(request, urls[9]);
+}
+
+void test_kudos_handler(void* response){
+  printf("Test kudos: Receiving Response!\n");
+//return;
+  const uint8_t *response_payload;
+  const char desired[] = "Hello World!";
+  int len = coap_get_payload(response, &response_payload);
+  int res = strncmp( desired, (char*)response_payload, strlen(desired));
+  if(res == 0){
+    printf("Test 0a: PASSED!\n");
+  }else {
+    printf("Test 0a: FAILED!\n");
+    printf("\t Expected result: \"Hello World!\" but was: ");
+    printf("%.*s\n", len, response_payload);
+    failed_tests++;
+  }
 }
 
 void test0_a(coap_message_t* request){

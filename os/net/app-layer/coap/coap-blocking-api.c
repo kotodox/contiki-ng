@@ -122,7 +122,7 @@ PT_THREAD(coap_blocking_request
                                                               state->
                                                               transaction->
                                                               message);
-
+      LOG_DBG("Vi har hittat rätt\n");
       coap_send_transaction(state->transaction);
       LOG_DBG("Requested #%"PRIu32" (MID %u)\n", state->block_num, request->mid);
 

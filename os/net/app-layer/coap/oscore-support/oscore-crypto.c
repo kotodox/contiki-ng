@@ -430,8 +430,18 @@ hkdf_extract(const uint8_t *salt, uint8_t salt_len, const uint8_t *ikm, uint8_t 
   hmac_sha256(salt, salt_len, ikm, ikm_len, prk_buffer);
 }
 /*---------------------------------------------------------------------------*/
-static int
-hkdf_expand(const uint8_t *prk, const uint8_t *info, uint8_t info_len, uint8_t *okm, uint8_t okm_len)
+/*
+static void
+printf_hex_detailed(const char* name, const uint8_t *data, size_t len)
+{
+  LOG_DBG("%s (len=%zu): ", name, len);
+  LOG_DBG_BYTES(data, len);
+  LOG_DBG_("\n");
+}
+*/
+
+int
+hkdf_expand(const uint8_t *prk, const uint8_t prk_len, const uint8_t *info, uint8_t info_len, uint8_t *okm, uint8_t okm_len)
 {
   if(info_len > HKDF_INFO_MAXLEN) {
     return OSCORE_CRYPTO_HKDF_INVALID_INFO_LEN;
@@ -439,21 +449,23 @@ hkdf_expand(const uint8_t *prk, const uint8_t *info, uint8_t info_len, uint8_t *
   if(okm_len > HKDF_OUTPUT_MAXLEN) {
     return OSCORE_CRYPTO_HKDF_INVALID_OKM_LEN;
   }
-  int N = (okm_len + 32 - 1) / 32; /* ceil(okm_len/32) */
+  int N = (okm_len + 32 - 1) / 32; 
   uint8_t aggregate_buffer[32 + HKDF_INFO_MAXLEN + 1];
   uint8_t out_buffer[HKDF_OUTPUT_MAXLEN + 32]; /* 32 extra bytes to fit the last block */
   int i;
   /* Compose T(1) */
   memcpy(aggregate_buffer, info, info_len);
   aggregate_buffer[info_len] = 0x01;
-  hmac_sha256(prk, 32, aggregate_buffer, info_len + 1, &(out_buffer[0]));
+  hmac_sha256(prk, prk_len, aggregate_buffer, info_len + 1, &(out_buffer[0]));
 
   /* Compose T(2) -> T(N) */
   memcpy(aggregate_buffer, &(out_buffer[0]), 32);
+
+
   for(i = 1; i < N; i++) {
     memcpy(&(aggregate_buffer[32]), info, info_len);
     aggregate_buffer[32 + info_len] = i + 1;
-    hmac_sha256(prk, 32, aggregate_buffer, 32 + info_len + 1, &(out_buffer[i * 32]));
+    hmac_sha256(prk, prk_len, aggregate_buffer, 32 + info_len + 1, &(out_buffer[i * 32]));
     memcpy(aggregate_buffer, &(out_buffer[i * 32]), 32);
   }
 
@@ -471,7 +483,7 @@ hkdf(
 {
   uint8_t prk_buffer[DTLS_SHA256_DIGEST_LENGTH];
   hkdf_extract(salt, salt_len, ikm, ikm_len, prk_buffer);
-  return hkdf_expand(prk_buffer, info, info_len, okm, okm_len);
+  return hkdf_expand(prk_buffer, DTLS_SHA256_DIGEST_LENGTH, info, info_len, okm, okm_len);
 }
 /*---------------------------------------------------------------------------*/
 #ifdef WITH_GROUPCOM

@@ -223,7 +223,6 @@ coap_endpoint_parse(const char *text, size_t size, coap_endpoint_t *ep)
   int start = index_of(text, 0, size, '[');
   int end = index_of(text, start, size, ']');
   uint32_t port;
-
   ep->secure = strncmp(text, "coaps:", 6) == 0;
   if(start >= 0 && end > start &&
      uiplib_ipaddrconv(&text[start], &ep->ipaddr)) {
