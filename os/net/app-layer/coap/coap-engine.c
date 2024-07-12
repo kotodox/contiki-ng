@@ -307,8 +307,9 @@ coap_receive(const coap_endpoint_t *src,
         if(coap_is_option(message, COAP_OPTION_OSCORE)){
           app_b2_nonces_t nonces = oscore_appendixb2_get_nonces();
           const uint8_t *old_nonce = nonces.kid_context_nonce;
-          const uint8_t old_nonce_len = nonces.len_kid_context_nonce;
+          
           if(old_nonce != NULL){
+            const uint8_t old_nonce_len = nonces.len_kid_context_nonce;
             const uint8_t *master_secret = message->security_context->master_secret;
             const uint8_t *master_salt = message->security_context->master_salt;
             uint8_t master_secret_len = message->security_context->master_secret_len;
@@ -373,9 +374,9 @@ coap_receive(const coap_endpoint_t *src,
             N1_cbor = oscore_cbor_byte_string(N1,len_N1);
             N2_cbor = oscore_cbor_byte_string(N2,len_N2);
             
-
-            uint8_t comb_X1_X2[X1_cbor_len + X2_cbor_len];
-            uint8_t comb_N1_N2[N1_cbor_len + N2_cbor_len];
+            /*HERE CHANGE*/
+            uint8_t *comb_X1_X2 = malloc((X1_cbor_len + X2_cbor_len) * sizeof(uint8_t));
+            uint8_t *comb_N1_N2= malloc((N1_cbor_len + N2_cbor_len) * sizeof(uint8_t));
             memcpy(comb_X1_X2,X1_cbor,X1_cbor_len);
             memcpy(comb_X1_X2 + X1_cbor_len,X2_cbor,X2_cbor_len);
             memcpy(comb_N1_N2,N1_cbor,N1_cbor_len);
@@ -387,7 +388,8 @@ coap_receive(const coap_endpoint_t *src,
             //kudos_vars.ctx_old = message->security_context;
             //oscore_ctx_t *ctx_old = kudos_vars.ctx_old;
             oscore_ctx_t *ctx_new = oscore_updateCtx(comb_X1_X2, X1_cbor_len + X2_cbor_len, comb_N1_N2, N1_cbor_len + N2_cbor_len ,ctx_old);
-
+            free(comb_X1_X2);
+            free(comb_N1_N2);
             message->security_context = ctx_new;
             coap_set_oscore(response, ctx_new);
           }

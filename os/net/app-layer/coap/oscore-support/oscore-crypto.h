@@ -45,7 +45,7 @@
 
 
 #ifndef HKDF_INFO_MAXLEN
-#define HKDF_INFO_MAXLEN 64  /*Kommer chockhöja den här och måste undersöka vad som händer när jag gör det*/
+#define HKDF_INFO_MAXLEN 32  /*Kommer chockhöja den här och måste undersöka vad som händer när jag gör det*/
 #endif /*HKDF_INFO_MAXLEN*/
 
 #ifndef HKDF_OUTPUT_MAXLEN

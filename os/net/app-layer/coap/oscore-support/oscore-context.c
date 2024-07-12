@@ -143,7 +143,7 @@ compose_Expandlabel(uint8_t *buffer, uint8_t buffer_len, char *label, const uint
   uint8_t pre_label_len = strlen(pre_label);
   uint8_t label_len = strlen(label);
   
-  
+  /* HERE CHANGE */
   char combined_label[pre_label_len + label_len + 1]; 
   strcpy(combined_label, pre_label); 
   strcat(combined_label, label); 
@@ -179,7 +179,6 @@ compose_Expandlabel(uint8_t *buffer, uint8_t buffer_len, char *label, const uint
 static bool
 bytes_equal(const uint8_t *a_ptr, uint8_t a_len, const uint8_t *b_ptr, uint8_t b_len)
 {
-  printf("%u \n", memcmp(a_ptr, b_ptr, a_len));
   return a_len == b_len && memcmp(a_ptr, b_ptr, a_len) == 0;
 }
 
