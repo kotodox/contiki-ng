@@ -240,7 +240,6 @@ coap_receive(const coap_endpoint_t *src,
 
   if(message->uri_path)/*Server responses have NULL STR, so for client mcast check is not needed*/
   {
-  
     /*The flags to check if a multicast resource is requested*/
     is_testmcast = (strncmp(message->uri_path, res1, strlen(res1)) == 0 && !strchr(message->uri_path, 'q'));
     is_testmcastq = (strncmp(message->uri_path, res2, strlen(res2)) == 0);
@@ -309,6 +308,7 @@ coap_receive(const coap_endpoint_t *src,
           const uint8_t *old_nonce = nonces.kid_context_nonce;
           
           if(old_nonce != NULL){
+            LOG_DBG(" \n");
             const uint8_t old_nonce_len = nonces.len_kid_context_nonce;
             const uint8_t *master_secret = message->security_context->master_secret;
             const uint8_t *master_salt = message->security_context->master_salt;
@@ -319,7 +319,7 @@ coap_receive(const coap_endpoint_t *src,
             const uint8_t *reciever_id = message->security_context->recipient_context.recipient_id;
             uint8_t reciever_id_len = message->security_context->recipient_context.recipient_id_len;
             oscore_free_ctx(message->security_context);
-            static oscore_ctx_t ctx_new;
+            oscore_ctx_t ctx_new;
             //oscore_ctx_t *ctx;
             uint8_t *new_nonce = malloc(old_nonce_len * sizeof(uint8_t));
             uint8_t len_new_nonce = old_nonce_len;
@@ -341,6 +341,7 @@ coap_receive(const coap_endpoint_t *src,
             oscore_derive_ctx(&ctx_new, master_secret, master_secret_len, master_salt, master_salt_len, 10, sender_id, sender_id_len, reciever_id, reciever_id_len, new_id_context, id_context_len);
             message->security_context = &ctx_new;
             coap_set_oscore(response, &ctx_new);
+            
           }
           else if(oscore_kudos_get_variables().kudos_running){
             kudos_variables_t kudos_vars = oscore_kudos_get_variables();
@@ -383,15 +384,12 @@ coap_receive(const coap_endpoint_t *src,
             memcpy(comb_N1_N2 + N1_cbor_len,N2_cbor,N2_cbor_len);
 
             oscore_free_ctx(message->security_context);
-            oscore_ctx_t *ctx_old = kudos_vars.ctx_old;
-            //oscore_free_ctx(message->security_context);
-            //kudos_vars.ctx_old = message->security_context;
-            //oscore_ctx_t *ctx_old = kudos_vars.ctx_old;
-            oscore_ctx_t *ctx_new = oscore_updateCtx(comb_X1_X2, X1_cbor_len + X2_cbor_len, comb_N1_N2, N1_cbor_len + N2_cbor_len ,ctx_old);
+            oscore_ctx_t *ctx_old = kudos_vars.ctx_old; // TODO
+            oscore_ctx_t ctx_new = oscore_updateCtx(comb_X1_X2, X1_cbor_len + X2_cbor_len, comb_N1_N2, N1_cbor_len + N2_cbor_len ,ctx_old);
             free(comb_X1_X2);
             free(comb_N1_N2);
-            message->security_context = ctx_new;
-            coap_set_oscore(response, ctx_new);
+            message->security_context = &ctx_new;
+            coap_set_oscore(response, &ctx_new);
           }
           else
           {

@@ -115,7 +115,7 @@ typedef struct oscore_exchange {
 } oscore_exchange_t;
 
 typedef struct app_b2_nonces{
-  const  uint8_t *kid_context_nonce;
+  const uint8_t *kid_context_nonce;
   uint8_t len_kid_context_nonce;
   uint8_t *aead_nonce;
   uint8_t len_aead_nonce;
@@ -181,6 +181,7 @@ void oscore_appendixb2_set_nonce_aead(const uint8_t *new_nonce, uint8_t len_nonc
 app_b2_nonces_t oscore_appendixb2_get_nonces(void);
 
 
+
 //sätter X och N, ska döpas om eller raderas
 void oscore_kudos_set_N_and_X(uint8_t *new_nonce, uint8_t len_nonce);
 
@@ -190,7 +191,10 @@ void oscore_kudos_true(void);
 
 void oscore_kudos_false(void);
 
-oscore_ctx_t *oscore_updateCtx(const uint8_t *X, uint8_t len_X, const uint8_t *N,const uint8_t len_N, oscore_ctx_t *old_Ctx);
+
+// TODO
+oscore_ctx_t oscore_updateCtx(const uint8_t *X, uint8_t len_X, const uint8_t *N,const uint8_t len_N, oscore_ctx_t *old_Ctx);
+//void oscore_updateCtx(const uint8_t *X, uint8_t len_X, const uint8_t *N,const uint8_t len_N, oscore_ctx_t *old_Ctx);
 
 kudos_variables_t oscore_kudos_get_variables(void);
 

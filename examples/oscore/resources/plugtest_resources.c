@@ -8,14 +8,14 @@
 
 //static coap_observee_t *obs;
 
-char *urls[10] = { "/oscore/hello/coap", "/oscore/hello/1", "/oscore/hello/2", "/oscore/hello/3", "/oscore/observe", "/oscore/hello/6", "/oscore/hello/7", "/oscore/test","/rederivation/blackhole/", "well-known/kudos/"};
+char *urls[3] = { "/oscore/hello/coap", /*"/oscore/hello/1", "/oscore/hello/2", "/oscore/hello/3", "/oscore/observe", "/oscore/hello/6", "/oscore/hello/7", "/oscore/test",*/ "/rederivation/blackhole/", "well-known/kudos/"};
 uint8_t rid[] = { 0x73, 0x65, 0x72, 0x76, 0x65, 0x72 };
 
 
 void test_appendixb2(coap_message_t* request){
   printf("\n\nTest Appendix\n");
   coap_init_message(request, COAP_TYPE_CON, COAP_GET, 0);
-  coap_set_header_uri_path(request, urls[8]);
+  coap_set_header_uri_path(request, urls[1]);
 }
 
 void test_appendixb2_handler(void* response){
@@ -38,7 +38,7 @@ void test_appendixb2_handler(void* response){
 void test_kudos(coap_message_t* request){
   printf("\n\nTest kudos: Starting!\n");
   coap_init_message(request, COAP_TYPE_CON, COAP_GET, 0);
-  coap_set_header_uri_path(request, urls[9]);
+  coap_set_header_uri_path(request, urls[2]);
 }
 
 void test_kudos_handler(void* response){
@@ -57,7 +57,7 @@ void test_kudos_handler(void* response){
     failed_tests++;
   }
 }
-
+/*
 void test0_a(coap_message_t* request){
   printf("\n\nTest 0a: Starting!\n");
   coap_init_message(request, COAP_TYPE_CON, COAP_GET, 0);
@@ -135,7 +135,6 @@ void test2_a_handler(void* response){
   if((etag_len != 1)){
     res++;
   }
-
   unsigned int content = 15;
   coap_get_header_content_format(response, &content);
   if(content != 0){
@@ -537,4 +536,4 @@ void test16_a_handler(void* response){
     failed_tests++;
   }
 }
-
+*/

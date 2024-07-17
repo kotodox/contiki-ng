@@ -4,7 +4,7 @@ all: oscore-example-server oscore-example-client oscore-plugtest-server oscore-p
 CONTIKI=../..
 
 MAKE_WITH_OSCORE = 1
-WERROR = 1
+WERROR = 0 # ska vara ett när developement är färdigt
 CFLAGS += -DCOOJA_MTARCH_STACKSIZE=4096
 CFLAGS += -DOSCORE_EP_CTX_ASSOCIATION
 

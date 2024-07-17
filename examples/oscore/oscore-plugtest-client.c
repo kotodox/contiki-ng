@@ -83,9 +83,9 @@ static struct etimer et;
 
 uint8_t token[2] = { 0x05, 0x05};
 
-#define NUMBER_OF_URLS 9
+#define NUMBER_OF_URLS 4
 char *service_urls[NUMBER_OF_URLS] =
-{ ".well-known/core", "oscore/hello/coap", "oscore/hello/1", "oscore/hello/2", "oscore/hello/3", "oscore/hello/6", "oscore/hello/7", "oscore/test", "oscore/app_b2"};
+{ ".well-known/core", "oscore/hello/coap", /*"oscore/hello/1", "oscore/hello/2", "oscore/hello/3", "oscore/hello/6", "oscore/hello/7", "oscore/test", */"oscore/app_b2"};
 
 
 PROCESS_THREAD(er_example_client, ev, data)

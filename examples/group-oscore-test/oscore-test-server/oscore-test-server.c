@@ -41,7 +41,6 @@
 #include "contiki.h"
 #include "coap-engine.h"
 #include "oscore.h"
-#include "cose.h" //isak
 
 /* Log configuration */
 #include "sys/log.h"
@@ -73,7 +72,7 @@ PROCESS_THREAD(er_example_server, ev, data)
 
   LOG_INFO("Starting Group OSCORE Server\n");
 
-  //oscore_init_server();
+  oscore_init_server();
 
   /*Derive an OSCORE-Security-Context. */
   static oscore_ctx_t context;

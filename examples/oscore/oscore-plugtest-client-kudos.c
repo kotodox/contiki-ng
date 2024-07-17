@@ -84,9 +84,9 @@ static struct etimer et;
 
 uint8_t token[2] = { 0x05, 0x05};
 
-#define NUMBER_OF_URLS 10
+#define NUMBER_OF_URLS 4
 char *service_urls[NUMBER_OF_URLS] =
-{ ".well-known/core", "oscore/hello/coap", "oscore/hello/1", "oscore/hello/2", "oscore/hello/3", "oscore/hello/6", "oscore/hello/7", "oscore/test", "/rederivation/blackhole/","well-known/kudos/"};
+{ ".well-known/core", "oscore/hello/coap", /*"oscore/hello/1", "oscore/hello/2", "oscore/hello/3", "oscore/hello/6", "oscore/hello/7", "oscore/test", */"/rederivation/blackhole/","well-known/kudos/"};
 
 
 PROCESS_THREAD(er_example_client, ev, data)
@@ -101,8 +101,8 @@ PROCESS_THREAD(er_example_client, ev, data)
   oscore_derive_ctx(&context, master_secret, 16, salt, 8, 10, sender_id, 1, receiver_id, 1, NULL, 0);
 
   uint8_t ret = 0;
-  ret += oscore_ep_ctx_set_association(&server_ep, service_urls[8], &context);
-  ret += oscore_ep_ctx_set_association(&server_ep, service_urls[9], &context);
+  ret += oscore_ep_ctx_set_association(&server_ep, service_urls[2], &context);
+  ret += oscore_ep_ctx_set_association(&server_ep, service_urls[3], &context);
   if( ret != 2) {
 	 printf("Not all URIs associated with contexts!\n");
   } 

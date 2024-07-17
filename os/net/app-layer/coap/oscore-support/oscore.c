@@ -420,7 +420,7 @@ oscore_decode_message(coap_message_t *coap_pkt)
       const uint8_t *reciever_id = ctx->recipient_context.recipient_id;
       uint8_t reciever_id_len = ctx->recipient_context.recipient_id_len;
       oscore_free_ctx(ctx);
-      static oscore_ctx_t ctx_new;
+      oscore_ctx_t ctx_new;   // TODO
       ctx = NULL;
       oscore_derive_ctx(&ctx_new, master_secret, master_secret_len, master_salt, master_salt_len, 10, sender_id, sender_id_len, reciever_id, reciever_id_len, nonce, len_of_kid);
       ctx = oscore_find_ctx_by_rid(reciever_id, reciever_id_len);
@@ -433,7 +433,7 @@ oscore_decode_message(coap_message_t *coap_pkt)
     //if(oscore_kudos_get_variables().kudos_running){
       uint8_t len_N = (cose->X & 0x0f) + 1;
       printf_hex_detailed("Before kudos free", ctx_old->master_secret,ctx_old->master_secret_len);
-      ctx = oscore_updateCtx(&(cose->X), sizeof(uint8_t),cose->N,len_N, ctx_old);
+      *ctx = oscore_updateCtx(&(cose->X), sizeof(uint8_t),cose->N,len_N, ctx_old);  // TODO
       oscore_kudos_set_old_ctx(ctx_old);
       oscore_kudos_free_ctx(ctx_old); 
       printf_hex_detailed("After kudos free",ctx_old->master_secret,ctx_old->master_secret_len);

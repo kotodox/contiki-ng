@@ -135,11 +135,11 @@ compose_info(
 static uint8_t
 compose_Expandlabel(uint8_t *buffer, uint8_t buffer_len, char *label, const uint8_t *context, uint8_t context_len, uint8_t oscore_key_length)
 { 
-
+  
   uint16_t oscore_key_lengthened = oscore_key_length; 
   uint8_t zeros = 0;
   uint8_t oscore_key_length_size = sizeof(uint16_t);
-  char pre_label[] = "oscore "; // Include the null terminator
+  const char pre_label[] = "oscore "; // Include the null terminator
   uint8_t pre_label_len = strlen(pre_label);
   uint8_t label_len = strlen(label);
   
@@ -288,12 +288,12 @@ oscore_find_ctx_by_rid(const uint8_t *rid, uint8_t rid_len)
   return NULL;
 } 
 
-oscore_ctx_t *
+oscore_ctx_t 
 oscore_updateCtx(const uint8_t *X,uint8_t len_X, const uint8_t *N,uint8_t len_N, oscore_ctx_t *old_Ctx)
 {
 
-
-  static oscore_ctx_t CTX_OUT;     // The new Security Context
+  // TODO
+  oscore_ctx_t CTX_OUT;// = malloc(sizeof(oscore_ctx_t));     // The new Security Context
   uint8_t *MSECRET_NEW;   // The new Master Secret
   const uint8_t *MSALT_NEW = N;    // The new Master Salt  
   uint8_t X_cbor_len = len_X + 1;
@@ -333,7 +333,7 @@ oscore_updateCtx(const uint8_t *X,uint8_t len_X, const uint8_t *N,uint8_t len_N,
   oscore_kudos_free_ctx(old_Ctx);
   oscore_derive_ctx(&CTX_OUT, MSECRET_NEW, oscore_key_length, MSALT_NEW, len_N, alg, sender_id, sender_id_len,reciever_id, reciever_id_len, NULL, 0 );
 
-  return &CTX_OUT;
+  return CTX_OUT;
 }
 
 
