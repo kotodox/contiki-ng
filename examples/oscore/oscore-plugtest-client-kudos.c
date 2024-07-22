@@ -113,9 +113,9 @@ PROCESS_THREAD(er_example_client, ev, data)
   while(1) {
     PROCESS_YIELD();
     if(etimer_expired(&et)) {
+        oscore_kudos_true();
         test_kudos(request);
 
-        LOG_DBG("hello");
         coap_set_token(request, token, 2);
       	COAP_BLOCKING_REQUEST(&server_ep, request, response_handler);
 
