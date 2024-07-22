@@ -197,8 +197,8 @@ oscore_encode_option_value(uint8_t *option_buffer, const cose_encrypt0_t *cose, 
 
   if(kudos_vars.kudos_running == true){
     option_buffer[0] |= 0x80;
+    option_buffer[1] |= 0x01;
     offset += 1;
-    oscore_kudos_false();
   }
 
   if(cose->partial_iv_len > 0 && cose->partial_iv != NULL && include_partial_iv && cose->partial_iv_len < 6) {
@@ -234,13 +234,19 @@ oscore_encode_option_value(uint8_t *option_buffer, const cose_encrypt0_t *cose, 
   }
 
   if((cose->N != NULL)){
-    option_buffer[1] |= 0x01;
+    //option_buffer[1] |= 0x01;
     uint8_t m = (cose->X & 0x0f);
     memcpy(&(option_buffer[offset]),&cose->X,1); /*The len is hardcoded as 1 because according to KUDOS it always is like that*/
     offset += 1;
     memcpy(&(option_buffer[offset]),cose->N,m+1);
     offset += m+1;
-  }
+    oscore_kudos_false();
+  }/*
+  if((cose->N == NULL) && (kudos_vars.kudos_running == true)){
+    
+  }*/
+
+
 
   if(cose->key_id_len > 0 && cose->key_id != NULL) {
     option_buffer[0] |= 0x08;

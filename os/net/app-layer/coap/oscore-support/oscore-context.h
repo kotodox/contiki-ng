@@ -128,7 +128,6 @@ typedef struct kudos_variables{
   uint8_t *y_nonce;
   uint8_t len_y_nonce;
   oscore_ctx_t *ctx_old;
-
 } kudos_variables_t;
 
 void oscore_ctx_store_init(void);

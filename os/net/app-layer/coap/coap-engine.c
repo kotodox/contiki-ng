@@ -502,7 +502,6 @@ coap_receive(const coap_endpoint_t *src,
 		   coap_serialize_message(response, transaction->message)) == 0) {
               coap_status_code = PACKET_SERIALIZATION_ERROR;
             }
-            LOG_DBG("hehehehej 2 \n");
 #endif /*WITH_GROUPCOM*/
           }
       } else {
