@@ -57,7 +57,7 @@ void test_kudos_handler(void* response){
     failed_tests++;
   }
 }
-/*
+
 void test0_a(coap_message_t* request){
   printf("\n\nTest 0a: Starting!\n");
   coap_init_message(request, COAP_TYPE_CON, COAP_GET, 0);
@@ -536,4 +536,4 @@ void test16_a_handler(void* response){
     failed_tests++;
   }
 }
-*/
+

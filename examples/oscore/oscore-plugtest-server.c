@@ -76,7 +76,7 @@ extern coap_resource_t
 
 uint8_t master_secret[16] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10};
 uint8_t salt[8] = {0x9e, 0x7c, 0xa9, 0x22, 0x23, 0x78, 0x63, 0x40};
-uint8_t *receiver_id = NULL;
+uint8_t receiver_id[1] = { 0x02};
 uint8_t sender_id[1] = { 0x01};
 //uint8_t id_context[8] = {0x37, 0xcb, 0xf3, 0x21, 0x00, 0x17, 0xa2, 0xd3};
 
@@ -92,12 +92,12 @@ PROCESS_THREAD(plugtest_server, ev, data)
   PRINTF("OSCORE Plugtests Server\n");
 
   static oscore_ctx_t context;
-  oscore_derive_ctx(&context, master_secret, 16, salt, 8, 10, sender_id, 1, receiver_id, 0, NULL, 0);
+  oscore_derive_ctx(&context, master_secret, 16, salt, 8, 10, sender_id, 1, receiver_id, 1, NULL, 0);
   //oscore_derive_ctx(&context, master_secret, 16, salt, 8, 10, sender_id, 1, receiver_id, 0, id_context, 8);
 
-  uint8_t *key_id = NULL;
+  //uint8_t *key_id = NULL;
   oscore_ctx_t *ctx;
-  ctx = oscore_find_ctx_by_rid(key_id, 0);
+  ctx = oscore_find_ctx_by_rid(receiver_id, 1);
   if(ctx == NULL){
     printf("CONTEXT NOT FOUND\n");
   }else {
@@ -113,8 +113,8 @@ PROCESS_THREAD(plugtest_server, ev, data)
   coap_activate_resource(&res_hello6, "oscore/hello/6");
   coap_activate_resource(&res_hello7, "oscore/hello/7");
   coap_activate_resource(&res_test,   "oscore/test");
-  //coap_activate_resource(&res_appb2,  "rederivation/blackhole");
-  //coap_activate_resource(&res_kudos,  "well-known/kudos");
+  coap_activate_resource(&res_appb2,  "rederivation/blackhole");
+  coap_activate_resource(&res_kudos,  "well-known/kudos");
 
   
   oscore_protect_resource(&res_hello1);
@@ -123,8 +123,8 @@ PROCESS_THREAD(plugtest_server, ev, data)
   oscore_protect_resource(&res_hello6);
   oscore_protect_resource(&res_hello7);
   oscore_protect_resource(&res_test);
-  //oscore_protect_resource(&res_appb2);
-  //oscore_protect_resource(&res_kudos);
+  oscore_protect_resource(&res_appb2);
+  oscore_protect_resource(&res_kudos);
 
 
   /* Define application-specific events here. */

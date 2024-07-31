@@ -68,7 +68,7 @@ uint8_t receiver_id[] = { 0x01};
 
 /* FIXME: This server address is hard-coded for Cooja and link-local for unconnected border router. */
 //#define SERVER_EP "coap://[fe80::202:0002:0002:0002]" //Cooja simulation address 
-#define SERVER_EP "coap://[0:0:0:0:0:0:0:0]:5683" //Ip for plugtest server  coap://
+#define SERVER_EP "coap://[fe80::212:4b00:14b5:d8a3]:5683" //Ip for plugtest server  coap://
 
 
 uint8_t test = 0;
@@ -83,9 +83,9 @@ static struct etimer et;
 
 uint8_t token[2] = { 0x05, 0x05};
 
-#define NUMBER_OF_URLS 4
+#define NUMBER_OF_URLS 9
 char *service_urls[NUMBER_OF_URLS] =
-{ ".well-known/core", "oscore/hello/coap", /*"oscore/hello/1", "oscore/hello/2", "oscore/hello/3", "oscore/hello/6", "oscore/hello/7", "oscore/test", */"oscore/app_b2"};
+{ ".well-known/core", "oscore/hello/coap", "oscore/hello/1", "oscore/hello/2", "oscore/hello/3", "oscore/hello/6", "oscore/hello/7", "oscore/test", "oscore/app_b2"};
 
 
 PROCESS_THREAD(er_example_client, ev, data)
@@ -106,6 +106,8 @@ PROCESS_THREAD(er_example_client, ev, data)
   ret += oscore_ep_ctx_set_association(&server_ep, service_urls[5], &context);
   ret += oscore_ep_ctx_set_association(&server_ep, service_urls[6], &context);
   ret += oscore_ep_ctx_set_association(&server_ep, service_urls[7], &context);
+  ret += oscore_ep_ctx_set_association(&server_ep, service_urls[8], &context);
+ // ret += oscore_ep_ctx_set_association(&server_ep, service_urls[9], &context);
   if( ret != 6) {
 	 printf("Not all URIs associated with contexts!\n");
   } 

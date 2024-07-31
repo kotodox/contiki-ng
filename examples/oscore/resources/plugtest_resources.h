@@ -11,7 +11,7 @@ void test_appendixb2(coap_message_t* request);
 void test_appendixb2_handler(void* response);
 
 
-/*
+
 void test0_a(coap_message_t* request);
 void test0_a_handler(void* response);
 
@@ -62,5 +62,5 @@ void test15_a_handler(void* response);
 
 void test16_a(coap_message_t* request);
 void test16_a_handler(void* response);
-*/
+
 void test_a(coap_message_t* request);
