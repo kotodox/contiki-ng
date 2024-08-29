@@ -116,10 +116,8 @@ PROCESS_THREAD(er_example_client, ev, data)
       	case 0:
 	  test0_a(request);
 	  break;
-	case 1:
-  	  oscore_kudos_true();
-          break;
-        case 2:
+        case 1:
+          oscore_kudos_true();
           test_kudos(request);
           break;
     	}
@@ -137,6 +135,13 @@ PROCESS_THREAD(er_example_client, ev, data)
 
 void response_handler(coap_message_t *response){
   printf("Response handler test: %d\n", test);
-
+  switch (test) {
+    case 0:
+      test0_a_handler(response);
+      break;
+    case 1:
+      test_kudos(response);
+      break;
+    }
 }
 
