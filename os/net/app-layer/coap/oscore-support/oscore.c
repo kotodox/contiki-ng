@@ -618,7 +618,9 @@ oscore_populate_cose(const coap_message_t *pkt, cose_encrypt0_t *cose, const osc
       cose->partial_iv_len = u64tob(ctx->sender_context.seq, cose->partial_iv);
       cose_encrypt0_set_key_id(cose, ctx->sender_context.sender_id, ctx->sender_context.sender_id_len);
       cose_encrypt0_set_key(cose, ctx->sender_context.sender_key, COSE_algorithm_AES_CCM_16_64_128_KEY_LEN);
+      LOG_DBG("Kommer vi hit?????");
       if(kudos_var.kudos_running){
+        LOG_DBG("Kommer vi hit?????222");
         //cose->partial_iv_len = 1;
         //uint8_t iv_value = 0x00; // The Partial IV value
         //memset(cose->partial_iv, iv_value, sizeof(cose->partial_iv));        
