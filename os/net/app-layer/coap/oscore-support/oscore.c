@@ -611,6 +611,8 @@ oscore_populate_cose(const coap_message_t *pkt, cose_encrypt0_t *cose, const osc
     cose_encrypt0_set_key(cose, ctx->recipient_context.recipient_key, COSE_algorithm_AES_CCM_16_64_128_KEY_LEN);
   }
 #else
+  app_b2_nonces_t nonces = oscore_appendixb2_get_nonces();
+  kudos_variables_t kudos_var = oscore_kudos_get_variables();
   if(coap_is_request(pkt)) {
     if(sending){
       cose->partial_iv_len = u64tob(ctx->sender_context.seq, cose->partial_iv);
@@ -630,8 +632,6 @@ oscore_populate_cose(const coap_message_t *pkt, cose_encrypt0_t *cose, const osc
     }
   } else { /* coap is response */
     if(sending){
-      app_b2_nonces_t nonces = oscore_appendixb2_get_nonces();
-      kudos_variables_t kudos_var = oscore_kudos_get_variables();
       if((nonces.kid_context_nonce == NULL) && (kudos_var.kudos_running !=true)){
         cose->partial_iv_len = u64tob(ctx->recipient_context.sliding_window.recent_seq, cose->partial_iv);
       }
