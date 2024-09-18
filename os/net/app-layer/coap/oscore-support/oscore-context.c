@@ -73,8 +73,10 @@ app_b2_nonces_t nonces = {
 
 kudos_variables_t kudos_nonces = {
   .kudos_running= false,
-  .N = NULL,
-  .X = 0,
+  .N1 = NULL,
+  .X1 = 0,
+  .N2 = NULL,
+  .X2 = 0,
   .y_nonce = NULL,
   .len_y_nonce = 0,
   .ctx_old = NULL
@@ -293,7 +295,7 @@ oscore_updateCtx(const uint8_t *X,uint8_t len_X, const uint8_t *N,uint8_t len_N,
 {
 
   // TODO
-  oscore_ctx_t CTX_OUT;// = malloc(sizeof(oscore_ctx_t));     // The new Security Context
+  oscore_ctx_t CTX_OUT;// = malloc(sizeof(oscore_ctx_t));  kanske behövs malloc   // The new Security Context
   uint8_t *MSECRET_NEW;   // The new Master Secret
   const uint8_t *MSALT_NEW = N;    // The new Master Salt  
   uint8_t X_cbor_len = len_X + 1;
@@ -418,11 +420,19 @@ oscore_appendixb2_set_nonce_aead(const uint8_t *new_nonce, uint8_t len_nonce)
 }
 
 void
-oscore_kudos_set_N_and_X(uint8_t *new_nonce, uint8_t X)
+oscore_kudos_set_N2_and_X2(uint8_t *new_nonce, uint8_t X)
 {
-  kudos_nonces.N = malloc(sizeof(uint8_t ) * ((X & 0x0f) + 1));
-  memcpy(kudos_nonces.N,new_nonce,(X & 0x0f) + 1);
-  kudos_nonces.X = X;
+  kudos_nonces.N2 = malloc(sizeof(uint8_t ) * ((X & 0x0f) + 1));
+  memcpy(kudos_nonces.N2,new_nonce,(X & 0x0f) + 1);
+  kudos_nonces.X2 = X;
+}
+
+void
+oscore_kudos_set_N1_and_X1(uint8_t *new_nonce, uint8_t X)
+{
+  kudos_nonces.N1 = malloc(sizeof(uint8_t ) * ((X & 0x0f) + 1));
+  memcpy(kudos_nonces.N1,new_nonce,(X & 0x0f) + 1);
+  kudos_nonces.X1 = X;
 }
 
 void
@@ -461,6 +471,25 @@ void
 oscore_kudos_set_old_ctx(oscore_ctx_t *ctx)
 {
   kudos_nonces.ctx_old = ctx;
+}
+
+uint8_t *
+oscore_kudos_comb(uint8_t *a, uint8_t len_a, uint8_t *b, uint8_t len_b)
+{
+  uint8_t a_cbor_len = len_a + 1;
+  uint8_t b_cbor_len = len_b + 1;
+
+  const uint8_t *a_cbor;
+  const uint8_t *b_cbor;
+
+  a_cbor = oscore_cbor_byte_string(a,len_a);
+  b_cbor = oscore_cbor_byte_string(b,len_b);
+  
+  /*HERE CHANGE*/
+  uint8_t *comb_a_b = malloc((a_cbor_len + b_cbor_len) * sizeof(uint8_t));
+  memcpy(comb_a_b,a_cbor,a_cbor_len);
+  memcpy(comb_a_b + a_cbor_len,b_cbor,b_cbor_len);
+  return comb_a_b;
 }
 
 uint8_t *

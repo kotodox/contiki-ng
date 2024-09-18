@@ -123,8 +123,10 @@ typedef struct app_b2_nonces{
 
 typedef struct kudos_variables{
   bool kudos_running;
-  uint8_t *N;
-  uint8_t X;
+  uint8_t *N1;
+  uint8_t X1;
+  uint8_t *N2;
+  uint8_t X2;
   uint8_t *y_nonce;
   uint8_t len_y_nonce;
   oscore_ctx_t *ctx_old;
@@ -182,13 +184,17 @@ app_b2_nonces_t oscore_appendixb2_get_nonces(void);
 
 
 //sätter X och N, ska döpas om eller raderas
-void oscore_kudos_set_N_and_X(uint8_t *new_nonce, uint8_t len_nonce);
+void oscore_kudos_set_N1_and_X1(uint8_t *new_nonce, uint8_t len_nonce);
+
+void oscore_kudos_set_N2_and_X2(uint8_t *new_nonce, uint8_t len_nonce);
 
 void oscore_kudos_set_nonce_y(uint8_t *new_nonce, uint8_t len_nonce);
 
 void oscore_kudos_true(void);
 
 void oscore_kudos_false(void);
+
+uint8_t *oscore_kudos_comb(uint8_t *a, uint8_t len_a, uint8_t *b, uint8_t len_b);
 
 
 // TODO

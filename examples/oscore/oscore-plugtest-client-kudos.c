@@ -113,11 +113,19 @@ PROCESS_THREAD(er_example_client, ev, data)
     PROCESS_YIELD();
     if(etimer_expired(&et)) {
       switch ( test ) {
-      	case 0:
+      	/*case 0:
 	  test0_a(request);
-	  break;
-        case 1:
+	  break;*/
+        case 0:
           oscore_kudos_true();
+          uint8_t X = 7;
+          uint8_t len_N = 8;
+          uint8_t *N = malloc(len_N * sizeof(uint8_t));
+          for(int i=0;i<len_N;i++){
+              N[i] = (uint8_t)random_rand();
+            }
+          oscore_kudos_set_N1_and_X1(N,X);
+          oscore_kudos_set_old_ctx(&context);
           test_kudos(request);
           break;
     	}
@@ -140,7 +148,7 @@ void response_handler(coap_message_t *response){
       test0_a_handler(response);
       break;
     case 1:
-      test_kudos(response);
+      test_kudos_handler(response);
       break;
     }
 }

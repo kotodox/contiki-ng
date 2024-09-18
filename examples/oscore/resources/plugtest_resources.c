@@ -45,14 +45,14 @@ void test_kudos_handler(void* response){
   printf("Test kudos: Receiving Response!\n");
 //return;
   const uint8_t *response_payload;
-  const char desired[] = "Hello World!";
+  const char desired[] = "Hello isak!";
   int len = coap_get_payload(response, &response_payload);
   int res = strncmp( desired, (char*)response_payload, strlen(desired));
   if(res == 0){
-    printf("Test 0a: PASSED!\n");
+    printf("Test kudos: PASSED!\n");
   }else {
     printf("Test 0a: FAILED!\n");
-    printf("\t Expected result: \"Hello World!\" but was: ");
+    printf("\t Expected result: \"Hello isak!\" but was: ");
     printf("%.*s\n", len, response_payload);
     failed_tests++;
   }

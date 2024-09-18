@@ -233,12 +233,22 @@ oscore_encode_option_value(uint8_t *option_buffer, const cose_encrypt0_t *cose, 
     offset += cose->kid_context_len;
   }
 
-  if((cose->N != NULL)){
+  if((kudos_vars.kudos_running == true)){
+    uint8_t X;
+    uint8_t *N;
+    if(kudos_vars.N2 == NULL){
+      X = kudos_vars.X1;
+      N = kudos_vars.N1;
+    }
+    else{
+      X = kudos_vars.X2;
+      N = kudos_vars.N2;
+    }
     //option_buffer[1] |= 0x01;
-    uint8_t m = (cose->X & 0x0f);
-    memcpy(&(option_buffer[offset]),&cose->X,1); /*The len is hardcoded as 1 because according to KUDOS it always is like that*/
+    uint8_t m = (X & 0x0f);
+    memcpy(&(option_buffer[offset]),&X,1); /*The len is hardcoded as 1 because according to KUDOS it always is like that*/
     offset += 1;
-    memcpy(&(option_buffer[offset]),cose->N,m+1);
+    memcpy(&(option_buffer[offset]),N,m+1);
     offset += m+1;
     oscore_kudos_false();
   }/*
@@ -323,14 +333,22 @@ oscore_decode_option_value(uint8_t *option_value, int option_len, cose_encrypt0_
   //kontrollera att nonce flag eller d-flag är satt i option
   if((option_value[0] & 0x80) != 0) {  
       if((option_value[1] & 0x01) != 0){
+        kudos_variables_t kudos_vars = oscore_kudos_get_variables();
         LOG_DBG("KUDOS request iniatied\n");
         oscore_kudos_true();
-        uint8_t kudos_byte = option_value[offset];
+        uint8_t X = option_value[offset];
         offset++;
-        uint8_t m = (kudos_byte & 0x0f);
-        oscore_kudos_set_N_and_X(&(option_value[offset]), kudos_byte);
-        cose_encrypt0_set_x_and_n(cose, &(option_value[offset]), kudos_byte);
+        uint8_t m = (X & 0x0f);
+        uint8_t *N = &(option_value[offset]);
+        if(kudos_vars.N1 == NULL){
+          oscore_kudos_set_N1_and_X1(N,X);
+        }
+        else{
+          oscore_kudos_set_N2_and_X2(N,X);
+        }
+        //cose_encrypt0_set_x_and_n(n12);
         offset += (m + 1);
+        /*
         if((kudos_byte & 0x40) != 0 ){
           //z = length of y nonce
           uint8_t z = option_value[offset];
@@ -338,7 +356,7 @@ oscore_decode_option_value(uint8_t *option_value, int option_len, cose_encrypt0_
           oscore_kudos_set_nonce_y(&(option_value[offset]), z);
           cose_encrypt0_set_y_nonce(cose, &(option_value[offset]), z);
           offset += z; 
-        }
+        }*/
       } else {
     LOG_DBG("KUDOS request failed\n");
     return BAD_OPTION_KUDOS;
@@ -433,16 +451,27 @@ oscore_decode_message(coap_message_t *coap_pkt)
     }
 
     //need to save ctx_old to change back
-    oscore_ctx_t *ctx_old = ctx;
+    //oscore_ctx_t *ctx_old = ctx;
     
-    if(cose->N != NULL){
-    //if(oscore_kudos_get_variables().kudos_running){
-      uint8_t len_N = (cose->X & 0x0f) + 1;
-      printf_hex_detailed("Before kudos free", ctx_old->master_secret,ctx_old->master_secret_len);
-      *ctx = oscore_updateCtx(&(cose->X), sizeof(uint8_t),cose->N,len_N, ctx_old);  // TODO
-      oscore_kudos_set_old_ctx(ctx_old);
-      oscore_kudos_free_ctx(ctx_old); 
-      printf_hex_detailed("After kudos free",ctx_old->master_secret,ctx_old->master_secret_len);
+    //if(cose->N != NULL){
+    if(oscore_kudos_get_variables().kudos_running){
+      kudos_variables_t kudos_vars = oscore_kudos_get_variables();
+      uint8_t *N;
+      uint8_t X;
+      if(kudos_vars.N2 != NULL){
+        N = kudos_vars.N1;
+        X = kudos_vars.X2;
+        oscore_kudos_set_old_ctx(ctx);
+      }
+      else{
+        N = kudos_vars.N2;
+        X = kudos_vars.X2;
+      }
+      uint8_t len_N = (X & 0x0f) + 1;
+      //oscore_kudos_free_ctx(ctx_old); 
+      printf_hex_detailed("Before kudos free", kudos_vars.ctx_old->master_secret,kudos_vars.ctx_old->master_secret_len);
+      *ctx = oscore_updateCtx(&(X), sizeof(uint8_t),N,len_N, kudos_vars.ctx_old);  // TODO
+      printf_hex_detailed("After kudos free",kudos_vars.ctx_old->master_secret,kudos_vars.ctx_old->master_secret_len);
 
     }
 #ifdef WITH_GROUPCOM
@@ -618,15 +647,13 @@ oscore_populate_cose(const coap_message_t *pkt, cose_encrypt0_t *cose, const osc
       cose->partial_iv_len = u64tob(ctx->sender_context.seq, cose->partial_iv);
       cose_encrypt0_set_key_id(cose, ctx->sender_context.sender_id, ctx->sender_context.sender_id_len);
       cose_encrypt0_set_key(cose, ctx->sender_context.sender_key, COSE_algorithm_AES_CCM_16_64_128_KEY_LEN);
-      LOG_DBG("Kommer vi hit?????");
-      if(kudos_var.kudos_running){
-        LOG_DBG("Kommer vi hit?????222");
+      /*if(kudos_var.kudos_running){
         //cose->partial_iv_len = 1;
         //uint8_t iv_value = 0x00; // The Partial IV value
         //memset(cose->partial_iv, iv_value, sizeof(cose->partial_iv));        
         cose->X = kudos_var.X;
         cose->N = kudos_var.N;
-      }
+      }*/
     } else { /* receiving */
       assert(cose->partial_iv_len > 0); /* Partial IV set by decode option value. */
       assert(cose->key_id != NULL); /* Key ID set by decode option value. */
@@ -656,8 +683,8 @@ oscore_populate_cose(const coap_message_t *pkt, cose_encrypt0_t *cose, const osc
         cose->partial_iv_len = 1;
         uint8_t iv_value = 0x00; // The Partial IV value
         memset(cose->partial_iv, iv_value, sizeof(cose->partial_iv));        
-        cose->X = kudos_var.X;
-        cose->N = kudos_var.N;
+        /*cose->X = kudos_var.X;
+        cose->N = kudos_var.N;*/
       }
     } else { /* receiving */
       assert(cose->partial_iv_len > 0); /* Partial IV set when getting seq from exchange. */
@@ -700,7 +727,24 @@ oscore_prepare_message(coap_message_t *coap_pkt, uint8_t *buffer)
     LOG_ERR("No context in OSCORE!\n");
     return PACKET_SERIALIZATION_ERROR;
   }
+  kudos_variables_t kudos_vars = oscore_kudos_get_variables();
+  if(kudos_vars.kudos_running && kudos_vars.N2 == NULL){
+    oscore_ctx_t *ctx_old = kudos_vars.ctx_old;
+    oscore_kudos_free_ctx(ctx);
+    uint8_t len_X = sizeof(uint8_t);
+    uint8_t len_N = (kudos_vars.X1 & 0x0f) + 1;
+    const uint8_t *N_cbor;
+    const uint8_t *X_cbor;
+    uint8_t N_cbor_len = len_N + 1;
+    uint8_t X_cbor_len = len_X + 1;
+    X_cbor = oscore_cbor_byte_string(&(kudos_vars.X1),len_X);
+    N_cbor = oscore_cbor_byte_string(kudos_vars.N1,len_N);
+    oscore_ctx_t ctx_new = oscore_updateCtx(X_cbor, X_cbor_len, N_cbor, N_cbor_len,ctx_old);
+    ctx = &ctx_new;
+    coap_pkt->security_context = &ctx_new;
+  }
 
+  // Här måste vi lägga in nya grejer
   oscore_populate_cose(coap_pkt, cose, coap_pkt->security_context, true);
   /* 2 Compose the AAD and the plaintext, as described in Sections 5.3 and 5.4.*/
   size_t plaintext_len = oscore_serializer(coap_pkt, content_buffer, ROLE_CONFIDENTIAL);
