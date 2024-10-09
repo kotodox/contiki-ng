@@ -2,10 +2,10 @@
 
 #include "uipopt.h"
 
-//#include <endian.h>
+#include <endian.h>
 
-#include "machine/endian.h"
-
+//#include "machine/endian.h"
+/*
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
 
 #if UIP_BYTE_ORDER != UIP_LITTLE_ENDIAN
@@ -51,7 +51,7 @@
 #else
 #error "Unknown byte order"
 #endif
-
+*/
 /* BSD Names */
 
 #define betoh16(x) be16toh(x)
