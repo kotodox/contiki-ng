@@ -155,6 +155,8 @@ compose_Expandlabel(uint8_t *buffer, uint8_t buffer_len, char *label, const uint
 
   if (expandlabel_len > buffer_len) {
     LOG_ERR("Expandlabel too long");
+    LOG_DBG("buffer len: %u  expandlabel len: %u X_N len :%u \n", buffer_len, expandlabel_len, context_len);
+
   }
 
   LOG_DBG("OSCORE_KEY_LENGTH : %u\n\n", oscore_key_lengthened);
@@ -247,7 +249,6 @@ oscore_derive_ctx(oscore_ctx_t *common_ctx,
        master_secret, master_secret_len,
        info_buffer, info_len,
        common_ctx->common_iv, CONTEXT_INIT_VECT_LEN);
-
   common_ctx->master_secret = master_secret;
   common_ctx->master_secret_len = master_secret_len;
   common_ctx->master_salt = master_salt;
@@ -266,7 +267,6 @@ oscore_derive_ctx(oscore_ctx_t *common_ctx,
   common_ctx->recipient_context.recipient_id_len = rid_len;
 
   oscore_sliding_window_init(&common_ctx->recipient_context.sliding_window);
-
   list_add(common_context_list, common_ctx);
 }
 
@@ -274,8 +274,12 @@ oscore_derive_ctx(oscore_ctx_t *common_ctx,
 void
 oscore_free_ctx(oscore_ctx_t *ctx)
 {
+  uint32_t length_of_list = list_length(common_context_list);
+  LOG_DBG("Längden av listan före remove %u: \n", length_of_list);
   list_remove(common_context_list, ctx); 
   memset(ctx, 0, sizeof(*ctx));
+  length_of_list = list_length(common_context_list);
+  LOG_DBG("Längden av listan efter remove %u: \n", length_of_list);
 }
 
 oscore_ctx_t *
@@ -290,12 +294,13 @@ oscore_find_ctx_by_rid(const uint8_t *rid, uint8_t rid_len)
   return NULL;
 } 
 
-oscore_ctx_t 
+oscore_ctx_t *
 oscore_updateCtx(const uint8_t *X,uint8_t len_X, const uint8_t *N,uint8_t len_N, oscore_ctx_t *old_Ctx)
 {
 
   // TODO
-  oscore_ctx_t CTX_OUT;// = malloc(sizeof(oscore_ctx_t));  kanske behövs malloc   // The new Security Context
+  LOG_DBG("hit 1??");
+  oscore_ctx_t *CTX_OUT = malloc(sizeof(oscore_ctx_t)); // kanske behövs malloc   // The new Security Context
   uint8_t *MSECRET_NEW;   // The new Master Secret
   const uint8_t *MSALT_NEW = N;    // The new Master Salt  
   uint8_t X_cbor_len = len_X + 1;
@@ -307,13 +312,17 @@ oscore_updateCtx(const uint8_t *X,uint8_t len_X, const uint8_t *N,uint8_t len_N,
   uint8_t *N_cbor;
   uint8_t len_X_N = X_cbor_len + N_cbor_len; 
   uint8_t *X_N = malloc(len_X_N * sizeof(uint8_t));
-  
+  LOG_DBG("hit 1??");
   X_cbor = oscore_cbor_byte_string(X,len_X);
   N_cbor = oscore_cbor_byte_string(N, len_N);
   memcpy(X_N,X_cbor,X_cbor_len);
   memcpy(X_N + X_cbor_len,N_cbor,N_cbor_len);
+  LOG_DBG("hit 1??");
   
   
+  if(common_context_list == NULL){
+    LOG_DBG("VAD FAAAAN");
+  }
   uint8_t oscore_key_length = old_Ctx->master_secret_len;
 
   char *label = "key update";
@@ -332,9 +341,10 @@ oscore_updateCtx(const uint8_t *X,uint8_t len_X, const uint8_t *N,uint8_t len_N,
   hkdf_expand(old_Ctx->master_secret, oscore_key_length,expandlabel, expandlabel_len, MSECRET_NEW, oscore_key_length);
   printf_hex_detailed("Master secret new : ", MSECRET_NEW, oscore_key_length);
   LOG_DBG("\n");
-  oscore_kudos_free_ctx(old_Ctx);
-  oscore_derive_ctx(&CTX_OUT, MSECRET_NEW, oscore_key_length, MSALT_NEW, len_N, alg, sender_id, sender_id_len,reciever_id, reciever_id_len, NULL, 0 );
-
+  //oscore_kudos_free_ctx(old_Ctx);
+  oscore_derive_ctx(CTX_OUT, MSECRET_NEW, oscore_key_length, MSALT_NEW, len_N, alg, sender_id, sender_id_len,reciever_id, reciever_id_len, NULL, 0 );
+  uint32_t length_of_list = list_length(common_context_list);
+  LOG_DBG("Längden av listan :%u \n", length_of_list);
   return CTX_OUT;
 }
 
@@ -432,6 +442,7 @@ oscore_kudos_set_N1_and_X1(uint8_t *new_nonce, uint8_t X)
 {
   kudos_nonces.N1 = malloc(sizeof(uint8_t ) * ((X & 0x0f) + 1));
   memcpy(kudos_nonces.N1,new_nonce,(X & 0x0f) + 1);
+  //kudos_nonces.X1 = malloc(sizeof(uint8_t));
   kudos_nonces.X1 = X;
 }
 
@@ -461,10 +472,12 @@ oscore_kudos_get_variables(void)
   return kudos_nonces;
 }
 
-void
+bool
 oscore_kudos_free_ctx(oscore_ctx_t *ctx)
 {
-  list_remove(common_context_list, ctx); 
+  uint32_t length_of_list = list_length(common_context_list);
+  LOG_DBG("Längden av listan före kudos remove %u: \n", length_of_list);
+  return list_remove(common_context_list, ctx);
 }
 
 void

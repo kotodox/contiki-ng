@@ -348,6 +348,7 @@ oscore_decode_option_value(uint8_t *option_value, int option_len, cose_encrypt0_
         }
         //cose_encrypt0_set_x_and_n(n12);
         offset += (m + 1);
+        LOG_DBG("M Value= %u \n", m);
         /*
         if((kudos_byte & 0x40) != 0 ){
           //z = length of y nonce
@@ -419,7 +420,7 @@ oscore_decode_message(coap_message_t *coap_pkt)
       coap_error_message = "Security context not found";
       return OSCORE_MISSING_CONTEXT; /* Will transform into UNAUTHORIZED_4_01 later */
     }
-    
+    LOG_DBG("1\n");
     if(cose->kid_context != NULL) {
       nanocbor_value_t btst_enc;
       nanocbor_decoder_init(&btst_enc, cose->kid_context, cose->kid_context_len);
@@ -429,12 +430,14 @@ oscore_decode_message(coap_message_t *coap_pkt)
       if(kidcon != NANOCBOR_OK){
         LOG_ERR("Couldnt decode byte string\n");
       }
+      LOG_DBG("2\n");
       app_b2_nonces_t nonces = oscore_appendixb2_get_nonces();
       if(memcmp(nonce,nonces.kid_context_nonce,nonces.len_kid_context_nonce) == 0 && nonces.kid_context_nonce != NULL){
         oscore_appendixb2_set_nonce_kidcontext(NULL,0);
       }else {
         oscore_appendixb2_set_nonce_kidcontext(nonce,len_of_kid);
       }
+
       const uint8_t *master_secret = ctx->master_secret;
       const uint8_t *master_salt = ctx->master_salt;
       uint8_t master_secret_len = ctx->master_secret_len;
@@ -458,21 +461,35 @@ oscore_decode_message(coap_message_t *coap_pkt)
       kudos_variables_t kudos_vars = oscore_kudos_get_variables();
       uint8_t *N;
       uint8_t X;
-      if(kudos_vars.N2 != NULL){
+      if(kudos_vars.N2 == NULL){
         N = kudos_vars.N1;
-        X = kudos_vars.X2;
+        X = kudos_vars.X1;
+
         oscore_kudos_set_old_ctx(ctx);
+        bool ans = oscore_kudos_free_ctx(ctx);
+        
       }
       else{
         N = kudos_vars.N2;
         X = kudos_vars.X2;
       }
+      //LOG_DBG("X value %u \n", X);
       uint8_t len_N = (X & 0x0f) + 1;
       //oscore_kudos_free_ctx(ctx_old); 
+      //printf_hex_detailed("N value: ",N, 8);
+      kudos_vars = oscore_kudos_get_variables();
       printf_hex_detailed("Before kudos free", kudos_vars.ctx_old->master_secret,kudos_vars.ctx_old->master_secret_len);
-      *ctx = oscore_updateCtx(&(X), sizeof(uint8_t),N,len_N, kudos_vars.ctx_old);  // TODO
+      //*ctx = oscore_updateCtx(&(X), sizeof(uint8_t),N,len_N, kudos_vars.ctx_old);  // TODO
+      
+      /*
+      oscore_ctx_t ctx_new = oscore_updateCtx(&(X), sizeof(uint8_t),N,len_N, kudos_vars.ctx_old);  // TODO
+      ctx = &ctx_new;
+      */
+      oscore_ctx_t *ctx_new = oscore_updateCtx(&(X), sizeof(uint8_t),N,len_N, kudos_vars.ctx_old);  // TODO
+      ctx = ctx_new;
+      
+      //LOG_DBG("did we remove from list? %u\n", ans);
       printf_hex_detailed("After kudos free",kudos_vars.ctx_old->master_secret,kudos_vars.ctx_old->master_secret_len);
-
     }
 #ifdef WITH_GROUPCOM
     uint8_t gid_len = cose_encrypt0_get_kid_context(cose, &group_id);
@@ -537,6 +554,7 @@ oscore_decode_message(coap_message_t *coap_pkt)
       uint8_t seq_len = u64tob(seq, seq_buffer);
       cose_encrypt0_set_partial_iv(cose, seq_buffer, seq_len);
     }
+
   }
 
   
@@ -730,6 +748,9 @@ oscore_prepare_message(coap_message_t *coap_pkt, uint8_t *buffer)
   kudos_variables_t kudos_vars = oscore_kudos_get_variables();
   if(kudos_vars.kudos_running && kudos_vars.N2 == NULL){
     oscore_ctx_t *ctx_old = kudos_vars.ctx_old;
+    LOG_DBG("\n\n\n");
+    LOG_DBG("inte nån gång plz");
+    LOG_DBG("\n\n\n");
     oscore_kudos_free_ctx(ctx);
     uint8_t len_X = sizeof(uint8_t);
     uint8_t len_N = (kudos_vars.X1 & 0x0f) + 1;
@@ -739,9 +760,14 @@ oscore_prepare_message(coap_message_t *coap_pkt, uint8_t *buffer)
     uint8_t X_cbor_len = len_X + 1;
     X_cbor = oscore_cbor_byte_string(&(kudos_vars.X1),len_X);
     N_cbor = oscore_cbor_byte_string(kudos_vars.N1,len_N);
+    /*
     oscore_ctx_t ctx_new = oscore_updateCtx(X_cbor, X_cbor_len, N_cbor, N_cbor_len,ctx_old);
     ctx = &ctx_new;
     coap_pkt->security_context = &ctx_new;
+    */
+    oscore_ctx_t *ctx_new = oscore_updateCtx(X_cbor, X_cbor_len, N_cbor, N_cbor_len,ctx_old);
+    ctx = ctx_new;
+    coap_pkt->security_context = ctx_new;
   }
 
   // Här måste vi lägga in nya grejer

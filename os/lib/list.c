@@ -140,16 +140,13 @@ list_tail(list_t list)
  */
 void
 list_add(list_t list, void *item)
-{
+{ 
   struct list *l;
-
   /* Make sure not to add the same element twice */
   list_remove(list, item);
-
   ((struct list *)item)->next = NULL;
 
   l = list_tail(list);
-
   if(l == NULL) {
     *list = item;
   } else {
