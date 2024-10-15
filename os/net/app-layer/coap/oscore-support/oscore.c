@@ -763,7 +763,7 @@ oscore_prepare_message(coap_message_t *coap_pkt, uint8_t *buffer)
     uint8_t X_cbor_len = len_X + 1;
     const uint8_t *N = kudos_vars.N1;
     const uint8_t *X = 7;
-    LOG_DG("X value from client begining : \n", kudos_vars.X1);
+    LOG_DBG("X value from client begining : \n", kudos_vars.X1);
     //X_cbor = oscore_cbor_byte_string(&(kudos_vars.X1),len_X);
     //N_cbor = oscore_cbor_byte_string(kudos_vars.N1,len_N);
     /*
