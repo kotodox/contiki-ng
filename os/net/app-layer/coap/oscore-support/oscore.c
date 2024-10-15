@@ -665,13 +665,13 @@ oscore_populate_cose(const coap_message_t *pkt, cose_encrypt0_t *cose, const osc
       cose->partial_iv_len = u64tob(ctx->sender_context.seq, cose->partial_iv);
       cose_encrypt0_set_key_id(cose, ctx->sender_context.sender_id, ctx->sender_context.sender_id_len);
       cose_encrypt0_set_key(cose, ctx->sender_context.sender_key, COSE_algorithm_AES_CCM_16_64_128_KEY_LEN);
-      /*if(kudos_var.kudos_running){
-        //cose->partial_iv_len = 1;
-        //uint8_t iv_value = 0x00; // The Partial IV value
-        //memset(cose->partial_iv, iv_value, sizeof(cose->partial_iv));        
-        cose->X = kudos_var.X;
-        cose->N = kudos_var.N;
-      }*/
+      if(kudos_var.kudos_running){
+        cose->partial_iv_len = 1;
+        uint8_t iv_value = 0x00; // The Partial IV value
+        memset(cose->partial_iv, iv_value, sizeof(cose->partial_iv));        
+        //cose->X = kudos_var.X;
+        //cose->N = kudos_var.N;
+      }
     } else { /* receiving */
       assert(cose->partial_iv_len > 0); /* Partial IV set by decode option value. */
       assert(cose->key_id != NULL); /* Key ID set by decode option value. */
