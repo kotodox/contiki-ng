@@ -404,7 +404,8 @@ coap_receive(const coap_endpoint_t *src,
             */
             LOG_DBG("%u",message->security_context->recipient_context.recipient_id);
             LOG_DBG("hit 6??");
-            //oscore_free_ctx(message->security_context);
+            oscore_free_ctx(message->security_context);
+            free(message->security_context);
             oscore_ctx_t *ctx_old = kudos_vars.ctx_old; // TODO
             LOG_DBG("hit 2??");
             /*

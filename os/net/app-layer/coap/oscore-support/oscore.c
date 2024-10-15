@@ -250,7 +250,7 @@ oscore_encode_option_value(uint8_t *option_buffer, const cose_encrypt0_t *cose, 
     offset += 1;
     memcpy(&(option_buffer[offset]),N,m+1);
     offset += m+1;
-    oscore_kudos_false();
+    oscore_kudos_false(); // Kanske kommer behöva flytta på denna för a free old_ctx
   }/*
   if((cose->N == NULL) && (kudos_vars.kudos_running == true)){
     
@@ -466,7 +466,7 @@ oscore_decode_message(coap_message_t *coap_pkt)
         X = kudos_vars.X1;
 
         oscore_kudos_set_old_ctx(ctx);
-        bool ans = oscore_kudos_free_ctx(ctx);
+        oscore_kudos_free_ctx(ctx);
         
       }
       else{
@@ -475,7 +475,7 @@ oscore_decode_message(coap_message_t *coap_pkt)
       }
       //LOG_DBG("X value %u \n", X);
       uint8_t len_N = (X & 0x0f) + 1;
-      //oscore_kudos_free_ctx(ctx_old); 
+      //oscore_kudos_free_ctx(ctx); 
       //printf_hex_detailed("N value: ",N, 8);
       kudos_vars = oscore_kudos_get_variables();
       printf_hex_detailed("Before kudos free", kudos_vars.ctx_old->master_secret,kudos_vars.ctx_old->master_secret_len);
@@ -507,7 +507,7 @@ oscore_decode_message(coap_message_t *coap_pkt)
        LOG_DBG_("]\n");
     }
 #endif
-
+    printf_hex_detailed("master secret again :" , ctx->master_secret,ctx->master_secret_len);
     /*4 Verify the ‘Partial IV’ parameter using the Replay Window, as described in Section 7.4. */
     if(!oscore_validate_sender_seq(&ctx->recipient_context, cose)) {
       LOG_WARN("OSCORE Replayed or old message\n");
@@ -680,6 +680,7 @@ oscore_populate_cose(const coap_message_t *pkt, cose_encrypt0_t *cose, const osc
   } else { /* coap is response */
     if(sending){
       if((nonces.kid_context_nonce == NULL) && (kudos_var.kudos_running !=true)){
+      //if(nonces.kid_context_nonce == NULL){
         cose->partial_iv_len = u64tob(ctx->recipient_context.sliding_window.recent_seq, cose->partial_iv);
       }
       cose_encrypt0_set_key_id(cose, ctx->recipient_context.recipient_id, ctx->recipient_context.recipient_id_len);
@@ -698,11 +699,13 @@ oscore_populate_cose(const coap_message_t *pkt, cose_encrypt0_t *cose, const osc
         cose->kid_context_len = (nonces.len_kid_context_nonce + 1);
       }
       if(kudos_var.kudos_running){
+        //cose->partial_iv_len = u64tob(ctx->sender_context.seq, cose->partial_iv);
+        LOG_DBG(" sender sequence = %lu, \n", ctx->sender_context.seq);
+        LOG_DBG(" Length of something = %u \n", u64tob(ctx->sender_context.seq, cose->partial_iv));
         cose->partial_iv_len = 1;
         uint8_t iv_value = 0x00; // The Partial IV value
-        memset(cose->partial_iv, iv_value, sizeof(cose->partial_iv));        
-        /*cose->X = kudos_var.X;
-        cose->N = kudos_var.N;*/
+        memset(cose->partial_iv, iv_value, sizeof(cose->partial_iv));
+        
       }
     } else { /* receiving */
       assert(cose->partial_iv_len > 0); /* Partial IV set when getting seq from exchange. */
