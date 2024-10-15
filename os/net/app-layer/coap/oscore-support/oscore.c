@@ -762,7 +762,7 @@ oscore_prepare_message(coap_message_t *coap_pkt, uint8_t *buffer)
     uint8_t N_cbor_len = len_N + 1;
     uint8_t X_cbor_len = len_X + 1;
     const uint8_t *N = kudos_vars.N1;
-    const uint8_t *X = 7;
+    const uint8_t X = kudos_vars.X1;
     LOG_DBG("X value from client begining : \n", kudos_vars.X1);
     //X_cbor = oscore_cbor_byte_string(&(kudos_vars.X1),len_X);
     //N_cbor = oscore_cbor_byte_string(kudos_vars.N1,len_N);
@@ -772,7 +772,7 @@ oscore_prepare_message(coap_message_t *coap_pkt, uint8_t *buffer)
     coap_pkt->security_context = &ctx_new;
     */
     //oscore_ctx_t *ctx_new = oscore_updateCtx(X_cbor, X_cbor_len, N_cbor, N_cbor_len,ctx_old);
-    oscore_ctx_t *ctx_new = oscore_updateCtx(X, len_X, N, len_N,ctx_old);
+    oscore_ctx_t *ctx_new = oscore_updateCtx(&X, len_X, N, len_N,ctx_old);
     ctx = ctx_new;
     coap_pkt->security_context = ctx_new;
   }
