@@ -343,10 +343,10 @@ coap_receive(const coap_endpoint_t *src,
             coap_set_oscore(response, &ctx_new);
             
           }
+
+          
           else if(oscore_kudos_get_variables().kudos_running){
-            LOG_DBG("hit 1??");
             kudos_variables_t kudos_vars = oscore_kudos_get_variables();
-            LOG_DBG("hit 4??");
             uint8_t *X1 = &kudos_vars.X1;
             uint8_t *N1 = kudos_vars.N1;
             uint8_t len_N1 = (*X1 & 0x0f) + 1;
@@ -354,7 +354,17 @@ coap_receive(const coap_endpoint_t *src,
             uint8_t len_X2 = sizeof(uint8_t);
             uint8_t *X2;
             uint8_t *N2;
-            uint8_t len_N2;
+            uint8_t len_N2 = len_N1;
+
+            
+            X2 = X1; //bad practise
+            N2 = malloc(len_N2 * sizeof(uint8_t));
+            for(int i=0;i<len_N2;i++){
+              N2[i] = (uint8_t)random_rand();
+            }
+            oscore_kudos_set_N2_and_X2(N2, *X2);
+            
+            /*
             if(kudos_vars.N2 == NULL){
               len_N2 = len_N1;
               X2 = X1; //bad practise
@@ -368,7 +378,7 @@ coap_receive(const coap_endpoint_t *src,
               X2 = &kudos_vars.X2;
               N2 = kudos_vars.N2;
               len_N2 = (*X2 & 0x0f) + 1;
-            }
+            }*/
             uint8_t *comb_N1_N2 = oscore_kudos_comb(N1, len_N1, N2, len_N2);
             uint8_t *comb_X1_X2 = oscore_kudos_comb(X1, len_X1, X2, len_X2);
             
@@ -376,53 +386,15 @@ coap_receive(const coap_endpoint_t *src,
             uint8_t N2_cbor_len = len_N2 + 1;
             uint8_t X1_cbor_len = len_X1 + 1;
             uint8_t X2_cbor_len = len_X2 + 1;
-            /*
-            uint8_t N1_cbor_len = len_N1 + 1;
-            uint8_t N2_cbor_len = len_N2 + 1;
-            uint8_t X1_cbor_len = len_X1 + 1;
-            uint8_t X2_cbor_len = len_X2 + 1;
-
-
-            const uint8_t *N1_cbor;
-            const uint8_t *N2_cbor;
-
-            const uint8_t *X1_cbor;
-            const uint8_t *X2_cbor;
-
-            X1_cbor = oscore_cbor_byte_string(X1,len_X1);
-            X2_cbor = oscore_cbor_byte_string(X2,len_X2);
-            N1_cbor = oscore_cbor_byte_string(N1,len_N1);
-            N2_cbor = oscore_cbor_byte_string(N2,len_N2);
             
-            
-            uint8_t *comb_X1_X2 = malloc((X1_cbor_len + X2_cbor_len) * sizeof(uint8_t));
-            uint8_t *comb_N1_N2= malloc((N1_cbor_len + N2_cbor_len) * sizeof(uint8_t));
-            memcpy(comb_X1_X2,X1_cbor,X1_cbor_len);
-            memcpy(comb_X1_X2 + X1_cbor_len,X2_cbor,X2_cbor_len);
-            memcpy(comb_N1_N2,N1_cbor,N1_cbor_len);
-            memcpy(comb_N1_N2 + N1_cbor_len,N2_cbor,N2_cbor_len);
-            */
-            LOG_DBG("%u",message->security_context->recipient_context.recipient_id);
-            LOG_DBG("hit 6??");
             oscore_free_ctx(message->security_context);
             free(message->security_context);
             oscore_ctx_t *ctx_old = kudos_vars.ctx_old; // TODO
-            LOG_DBG("hit 2??");
-            /*
-            oscore_ctx_t ctx_new = oscore_updateCtx(comb_X1_X2, X1_cbor_len + X2_cbor_len, comb_N1_N2, N1_cbor_len + N2_cbor_len ,ctx_old);
-            free(comb_X1_X2);
-            free(comb_N1_N2);
-            LOG_DBG("hit 3??");
-            message->security_context = &ctx_new;
-            coap_set_oscore(response, &ctx_new);
-            */
             oscore_ctx_t *ctx_new = oscore_updateCtx(comb_X1_X2, X1_cbor_len + X2_cbor_len, comb_N1_N2, N1_cbor_len + N2_cbor_len ,ctx_old);
             free(comb_X1_X2);
             free(comb_N1_N2);
-            LOG_DBG("hit 3??");
             message->security_context = ctx_new;
             coap_set_oscore(response, ctx_new);
-            LOG_DBG("Hit4??");
           }
           else
           {

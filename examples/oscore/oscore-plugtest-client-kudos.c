@@ -68,8 +68,8 @@ uint8_t receiver_id[] = { 0x01};
 
 /* FIXME: This server address is hard-coded for Cooja and link-local for unconnected border router. */
 //#define SERVER_EP "coap://[fe80::202:0002:0002:0002]" //Cooja simulation address 
-#define SERVER_EP "coap://[fe80::212:4b00:14b5:d8a3]:5683" //Ip for plugtest server  coap://
-
+//#define SERVER_EP "coap://[fe80::212:4b00:14b5:d8a3]:5683" //Ip for plugtest server  coap://
+#define SERVER_EP "coap://[fd00::1]:5683"
 
 uint8_t test = 0;
 uint8_t failed_tests = 0;
@@ -117,6 +117,7 @@ PROCESS_THREAD(er_example_client, ev, data)
 	  test0_a(request);
 	  break;*/
         case 0:
+          
           oscore_kudos_true();
           uint8_t X = 7;
           uint8_t len_N = 8;
@@ -128,6 +129,18 @@ PROCESS_THREAD(er_example_client, ev, data)
           oscore_kudos_set_old_ctx(&context);
           test_kudos(request);
           break;
+          
+
+          /*
+          oscore_appendixb2_true();
+          uint8_t len_R1 = 8;
+          uint8_t *R1 = malloc(len_N * sizeof(uint8_t));
+          for(int i=0;i<len_R1;i++){
+              N[i] = (uint8_t)random_rand();
+            }
+          oscore_appendixb2_set_R1_and_len_R1(R1,len_R1);
+          test_appendixb2(request);
+          */
     	}
         coap_set_token(request, token, 2);
       	COAP_BLOCKING_REQUEST(&server_ep, request, response_handler);
@@ -145,9 +158,6 @@ void response_handler(coap_message_t *response){
   printf("Response handler test: %d\n", test);
   switch (test) {
     case 0:
-      test0_a_handler(response);
-      break;
-    case 1:
       test_kudos_handler(response);
       break;
     }

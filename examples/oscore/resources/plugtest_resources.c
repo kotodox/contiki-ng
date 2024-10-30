@@ -51,7 +51,7 @@ void test_kudos_handler(void* response){
   if(res == 0){
     printf("Test kudos: PASSED!\n");
   }else {
-    printf("Test 0a: FAILED!\n");
+    printf("Test kudos: FAILED!\n");
     printf("\t Expected result: \"Hello isak!\" but was: ");
     printf("%.*s\n", len, response_payload);
     failed_tests++;

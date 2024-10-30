@@ -108,13 +108,9 @@ typedef struct cose_encrypt0_t {
   const uint8_t *aad;
   uint8_t *content;
 
+  bool response_flag;
 
-  // Below is variables för KUDOS algorithm
-  uint8_t X;
-  uint8_t len_y_nonce;
-  const uint8_t *N;
-  const uint8_t *y_nonce;
-
+ 
 } cose_encrypt0_t;
 
 /* COSE Sign1 Struct */
@@ -164,11 +160,6 @@ void cose_encrypt0_set_aad(cose_encrypt0_t *ptr, const uint8_t *buffer, uint8_t 
 uint8_t cose_encrypt0_get_kid_context(cose_encrypt0_t *ptr, const uint8_t **buffer);
 void cose_encrypt0_set_kid_context(cose_encrypt0_t *ptr, const uint8_t *buffer, uint8_t size);
 
-
-/* Function for KUDOS implementation*/
-void cose_encrypt0_set_x_and_n(cose_encrypt0_t *ptr, const uint8_t *buffer, uint8_t size);
-/* Function for KUDOS implementation*/
-void cose_encrypt0_set_y_nonce(cose_encrypt0_t *ptr, const uint8_t *buffer, uint8_t size);
 
 bool cose_encrypt0_set_key(cose_encrypt0_t *ptr, const uint8_t *key, uint8_t key_size);
 
