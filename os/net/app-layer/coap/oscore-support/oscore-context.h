@@ -116,16 +116,17 @@ typedef struct oscore_exchange {
 
 typedef struct app_b2_nonces{
   bool appendixb2_running;
-  const uint8_t *R1;
+  uint8_t *R1;
   uint8_t len_R1;
-  const uint8_t *R2;
+  uint8_t *R2;
   uint8_t len_R2;
-  const uint8_t *R3;
+  uint8_t *R3;
   uint8_t len_R3;
-  const uint8_t *kid_context_nonce;
+  uint8_t *kid_context_nonce;
   uint8_t len_kid_context_nonce;
   uint8_t *aead_nonce;
   uint8_t len_aead_nonce;
+  oscore_ctx_t *ctx_old;
 } app_b2_nonces_t;
 
 typedef struct kudos_variables{
@@ -170,21 +171,25 @@ void oscore_derive_ctx(oscore_ctx_t *common_ctx,
   const uint8_t *id_context, uint8_t id_context_len);
 #endif
 
-bool oscore_kudos_free_ctx(oscore_ctx_t *ctx);
+
 
 void oscore_free_ctx(oscore_ctx_t *ctx);
 
 oscore_ctx_t *oscore_find_ctx_by_rid(const uint8_t *rid, uint8_t rid_len);
 
-void oscore_kudos_set_old_ctx(oscore_ctx_t *ctx);
+uint8_t *oscore_cbor_byte_string(const uint8_t *byte_string, const uint8_t len_byte_string);
 
-void oscore_appendixb2_set_nonce_kidcontext(const uint8_t *new_nonce, uint8_t len_nonce);
+// Appendix b.2 functions bellow
 
+app_b2_nonces_t *oscore_appendixb2_get_nonces(void);
 
-void oscore_appendixb2_set_nonce_aead(const uint8_t *new_nonce, uint8_t len_nonce);
+bool oscore_appendixb2_free_ctx(oscore_ctx_t *ctx);
 
+void oscore_appendixb2_true(void);
 
-app_b2_nonces_t oscore_appendixb2_get_nonces(void);
+void oscore_appendixb2_false(void);
+
+void oscore_appendixb2_set_old_ctx(oscore_ctx_t *ctx);
 
 void oscore_appendixb2_set_R1_and_len_R1(uint8_t *new_nonce, uint8_t len_nonce);
 
@@ -192,11 +197,21 @@ void oscore_appendixb2_set_R2_and_len_R2(uint8_t *new_nonce, uint8_t len_nonce);
 
 void oscore_appendixb2_set_R3_and_len_R3(uint8_t *new_nonce, uint8_t len_nonce);
 
-//sätter X och N, ska döpas om eller raderas
+void oscore_appendixb2_set_nonce_kidcontext(uint8_t *new_nonce, uint8_t len_nonce);
+
+void oscore_appendixb2_set_nonce_aead(const uint8_t *new_nonce, uint8_t len_nonce);
+
+// End of appendix b.2 functions
+
+// Kudos functions bellow
+
+bool oscore_kudos_free_ctx(oscore_ctx_t *ctx);
+
+void oscore_kudos_set_old_ctx(oscore_ctx_t *ctx);
+
 void oscore_kudos_set_N1_and_X1(uint8_t *new_nonce, uint8_t len_nonce);
 
 void oscore_kudos_set_N2_and_X2(uint8_t *new_nonce, uint8_t len_nonce);
-
 
 void oscore_kudos_true(void);
 
@@ -204,14 +219,11 @@ void oscore_kudos_false(void);
 
 uint8_t *oscore_kudos_comb(uint8_t *a, uint8_t len_a, uint8_t *b, uint8_t len_b);
 
-
-// TODO
 oscore_ctx_t *oscore_updateCtx(const uint8_t *X, uint8_t len_X, const uint8_t *N,const uint8_t len_N, oscore_ctx_t *old_Ctx);
-//void oscore_updateCtx(const uint8_t *X, uint8_t len_X, const uint8_t *N,const uint8_t len_N, oscore_ctx_t *old_Ctx);
 
 kudos_variables_t oscore_kudos_get_variables(void);
 
-uint8_t *oscore_cbor_byte_string(const uint8_t *byte_string, const uint8_t len_byte_string);
+// End of kudos functions
 
 /* Token <=> SEQ association */
 void oscore_exchange_store_init(void);

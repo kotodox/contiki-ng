@@ -8,8 +8,8 @@ void test_kudos(coap_message_t* request);
 void test_kudos_handler(void* response);
 
 void test_appendixb2(coap_message_t* request);
-void test_appendixb2_handler(void* response);
-
+void test_appendixb2_handler_first_response(void* response);
+void test_appendixb2_handler_second_response(void* response);
 
 
 void test0_a(coap_message_t* request);

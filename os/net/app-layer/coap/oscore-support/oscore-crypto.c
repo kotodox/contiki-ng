@@ -309,7 +309,7 @@ printf_hex_detailed(const char* name, const uint8_t *data, size_t len)
   LOG_DBG_("\n");
 }
 
-/* Return 0 if if decryption failure. Plaintext length otherwise.
+/* Return 0 if decryption failure. Plaintext length otherwise.
    Tag-length and plaintext length is derived from algorithm. No check is done to ensure
    that plaintext buffer is of the correct length. */
 int

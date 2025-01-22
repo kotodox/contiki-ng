@@ -86,7 +86,7 @@ uint8_t token[2] = { 0x05, 0x05};
 #define NUMBER_OF_URLS 4
 char *service_urls[NUMBER_OF_URLS] =
 { ".well-known/core", "oscore/hello/coap", "/rederivation/blackhole/","well-known/kudos/"};
-
+// Todo lägg in en resource för att kontrollera response
 
 PROCESS_THREAD(er_example_client, ev, data)
 {
@@ -105,7 +105,7 @@ PROCESS_THREAD(er_example_client, ev, data)
   if( ret != 2) {
 	 printf("Not all URIs associated with contexts!\n");
   } 
-
+  printf("Vi är här nån gång va \n");
   #endif /* WITH_OSCORE */
   etimer_set(&et, TOGGLE_INTERVAL * CLOCK_SECOND);
   
@@ -117,21 +117,32 @@ PROCESS_THREAD(er_example_client, ev, data)
 	  test0_a(request);
 	  break;*/
         case 0:
+          
+          
+          oscore_appendixb2_true();
+          uint8_t len_R1 = 8;
+          uint8_t *R1 = malloc(len_R1 * sizeof(uint8_t));
+          for(int i=0;i<len_R1;i++){
+              R1[i] = (uint8_t)random_rand();
+            }
+          oscore_appendixb2_set_R1_and_len_R1(R1,len_R1);
+          oscore_appendixb2_set_nonce_kidcontext(R1,len_R1);
+          test_appendixb2(request);
+          break;
 
           
-          oscore_kudos_true();
-          uint8_t X = 7;
-          uint8_t len_N = 8;
-          uint8_t *N = malloc(len_N * sizeof(uint8_t));
-          for(int i=0;i<len_N;i++){
-              N[i] = (uint8_t)random_rand();
+        case 1:
+          uint8_t len_R3 = 8;
+          uint8_t *R3 = malloc(len_R3 * sizeof(uint8_t));
+          for(int i=0;i<len_R3;i++){
+              R3[i] = (uint8_t)random_rand();
             }
-          oscore_kudos_set_N1_and_X1(N,X);
-          oscore_kudos_set_old_ctx(&context);
-          test_kudos(request);
+          oscore_appendixb2_set_R3_and_len_R3(R3,len_R3);
+          test_appendixb2(request);
+          
           break;
-          
-          
+        case 2:
+          test_appendixb2(request);
     	}
         coap_set_token(request, token, 2);
       	COAP_BLOCKING_REQUEST(&server_ep, request, response_handler);
@@ -149,8 +160,12 @@ void response_handler(coap_message_t *response){
   printf("Response handler test: %d\n", test);
   switch (test) {
     case 0:
-      test_kudos_handler(response);
+      test_appendixb2_handler_first_response(response);
       break;
-    }
+    
+    case 1:
+      test_appendixb2_handler_second_response(response);
+      break;
+  }
 }
 

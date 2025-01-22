@@ -46,6 +46,7 @@
 #include "oscore.h"
 #include "assert.h"
 
+
 #include "oscore-nanocbor-helper.h"
 
 #include <stdio.h>
@@ -64,21 +65,27 @@ MEMB(exchange_memb, oscore_exchange_t, TOKEN_SEQ_NUM);
 LIST(common_context_list);
 LIST(exchange_list);
 
-app_b2_nonces_t nonces = {
+app_b2_nonces_t appendixb2_nonces = {
+  .appendixb2_running = false,
+  .R1 = NULL,
+  .len_R1 = 0,
+  .R2 = NULL,
+  .len_R2 = 0,
+  .R3 = NULL,
+  .len_R3 = 0,
   .kid_context_nonce = NULL,        // Pointer initialized to NULL
   .len_kid_context_nonce = 0,       // Length initialized to 0
   .aead_nonce = NULL,                // Pointer initialized to NULL
-  .len_aead_nonce = 0                // Length initialized to 0
+  .len_aead_nonce = 0,                // Length initialized to 0
+  .ctx_old = NULL
 };
 
 kudos_variables_t kudos_nonces = {
-  .kudos_running= false,
+  .kudos_running = false,
   .N1 = NULL,
   .X1 = 0,
   .N2 = NULL,
   .X2 = 0,
-  .y_nonce = NULL,
-  .len_y_nonce = 0,
   .ctx_old = NULL
 };
 
@@ -141,7 +148,7 @@ compose_Expandlabel(uint8_t *buffer, uint8_t buffer_len, char *label, const uint
   uint16_t oscore_key_lengthened = oscore_key_length; 
   uint8_t zeros = 0;
   uint8_t oscore_key_length_size = sizeof(uint16_t);
-  const char pre_label[] = "oscore "; // Include the null terminator
+  const char pre_label[] = "oscore ";
   uint8_t pre_label_len = strlen(pre_label);
   uint8_t label_len = strlen(label);
   
@@ -156,7 +163,6 @@ compose_Expandlabel(uint8_t *buffer, uint8_t buffer_len, char *label, const uint
   if (expandlabel_len > buffer_len) {
     LOG_ERR("Expandlabel too long");
     LOG_DBG("buffer len: %u  expandlabel len: %u X_N len :%u \n", buffer_len, expandlabel_len, context_len);
-
   }
 
   LOG_DBG("OSCORE_KEY_LENGTH : %u\n\n", oscore_key_lengthened);
@@ -170,13 +176,7 @@ compose_Expandlabel(uint8_t *buffer, uint8_t buffer_len, char *label, const uint
   // Combine pre_label and label into a single string
   memcpy(buffer + oscore_key_length_size, combined_label, combined_label_len);
   memcpy(buffer + oscore_key_length_size + combined_label_len , context, context_len);
-  /*
   
-  memcpy(buffer + oscore_key_length_size, pre_label, pre_label_len);
-  memcpy(buffer + oscore_key_length_size + pre_label_len, label, label_len);
-  memcpy(buffer + oscore_key_length_size + pre_label_len + label_len, context, context_len);
-  */
-
   return expandlabel_len;
 }
 
@@ -216,12 +216,9 @@ oscore_derive_ctx(oscore_ctx_t *common_ctx,
   }
   printf_hex_detailed("master secret: ", master_secret, master_secret_len);
   printf_hex_detailed("master salt: ", master_salt, master_salt_len);
-  printf_hex_detailed("id_context: ", id_context, id_context_len);
+  printf_hex_detailed("derive ctx   id_context: ", id_context, id_context_len);
   printf_hex_detailed("sid: ", sid, sid_len);
   printf_hex_detailed("rid: ", rid, rid_len);
-  
-
-
 
   /* sender_key */
   info_len = compose_info(info_buffer, sizeof(info_buffer), alg, sid, sid_len, id_context, id_context_len, "Key", CONTEXT_KEY_LEN);
@@ -279,7 +276,6 @@ oscore_free_ctx(oscore_ctx_t *ctx)
   list_remove(common_context_list, ctx); 
   memset(ctx, 0, sizeof(*ctx));
   length_of_list = list_length(common_context_list);
-  LOG_DBG("Längden av listan efter remove %u: \n", length_of_list);
 }
 
 oscore_ctx_t *
@@ -299,30 +295,26 @@ oscore_updateCtx(const uint8_t *X,uint8_t len_X, const uint8_t *N,uint8_t len_N,
 {
 
   // TODO
-  LOG_DBG("hit 1??");
   oscore_ctx_t *CTX_OUT = malloc(sizeof(oscore_ctx_t)); // kanske behövs malloc   // The new Security Context
   uint8_t *MSECRET_NEW;   // The new Master Secret
   const uint8_t *MSALT_NEW = N;    // The new Master Salt  
   uint8_t X_cbor_len = len_X + 1;
   uint8_t *X_cbor;
   uint8_t N_cbor_len = len_N + 1;
+
+  
   if(len_N > 23){
+    // May be += 1
     N_cbor_len += 2;
   }
   uint8_t *N_cbor;
   uint8_t len_X_N = X_cbor_len + N_cbor_len; 
   uint8_t *X_N = malloc(len_X_N * sizeof(uint8_t));
-  LOG_DBG("hit 1??");
   X_cbor = oscore_cbor_byte_string(X,len_X);
   N_cbor = oscore_cbor_byte_string(N, len_N);
   memcpy(X_N,X_cbor,X_cbor_len);
   memcpy(X_N + X_cbor_len,N_cbor,N_cbor_len);
-  LOG_DBG("hit 1??");
   
-  
-  if(common_context_list == NULL){
-    LOG_DBG("VAD FAAAAN");
-  }
   uint8_t oscore_key_length = old_Ctx->master_secret_len;
 
   char *label = "key update";
@@ -341,10 +333,11 @@ oscore_updateCtx(const uint8_t *X,uint8_t len_X, const uint8_t *N,uint8_t len_N,
   hkdf_expand(old_Ctx->master_secret, oscore_key_length,expandlabel, expandlabel_len, MSECRET_NEW, oscore_key_length);
   printf_hex_detailed("Master secret new : ", MSECRET_NEW, oscore_key_length);
   LOG_DBG("\n");
-  //oscore_kudos_free_ctx(old_Ctx);
   oscore_derive_ctx(CTX_OUT, MSECRET_NEW, oscore_key_length, MSALT_NEW, len_N, alg, sender_id, sender_id_len,reciever_id, reciever_id_len, NULL, 0 );
   uint32_t length_of_list = list_length(common_context_list);
   LOG_DBG("Längden av listan :%u \n", length_of_list);
+  free(MSECRET_NEW);
+  free(X_N);
   return CTX_OUT;
 }
 
@@ -414,20 +407,6 @@ oscore_remove_exchange(const uint8_t *token, uint8_t token_len)
   }
 }
 
-void
-oscore_appendixb2_set_nonce_kidcontext(const uint8_t *new_nonce, uint8_t len_nonce)
-{
-  nonces.kid_context_nonce = new_nonce;
-  nonces.len_kid_context_nonce = len_nonce;
-}
-
-void
-oscore_appendixb2_set_nonce_aead(const uint8_t *new_nonce, uint8_t len_nonce)
-{
-  nonces.aead_nonce = malloc(sizeof(uint8_t) * len_nonce);
-  memcpy(nonces.aead_nonce, new_nonce, len_nonce);
-  nonces.len_aead_nonce = len_nonce;
-}
 
 void
 oscore_kudos_set_N2_and_X2(uint8_t *new_nonce, uint8_t X)
@@ -442,17 +421,10 @@ oscore_kudos_set_N1_and_X1(uint8_t *new_nonce, uint8_t X)
 {
   kudos_nonces.N1 = malloc(sizeof(uint8_t ) * ((X & 0x0f) + 1));
   memcpy(kudos_nonces.N1,new_nonce,(X & 0x0f) + 1);
-  //kudos_nonces.X1 = malloc(sizeof(uint8_t));
   kudos_nonces.X1 = X;
 }
 
-void
-oscore_kudos_set_nonce_y(uint8_t *new_nonce, uint8_t len_nonce)
-{
-  kudos_nonces.y_nonce = malloc(sizeof(uint8_t ) * len_nonce);
-  memcpy(kudos_nonces.y_nonce,new_nonce,len_nonce);
-  kudos_nonces.len_y_nonce = len_nonce;
-}
+
 
 void
 oscore_kudos_true(void)
@@ -524,11 +496,101 @@ oscore_cbor_byte_string(const uint8_t *byte_string, const uint8_t len_byte_strin
 }
 
 
-app_b2_nonces_t
+app_b2_nonces_t *
 oscore_appendixb2_get_nonces(void)
 {
-  return nonces;
+  return &appendixb2_nonces;
 }
+
+void
+oscore_appendixb2_set_old_ctx(oscore_ctx_t *ctx)
+{
+  appendixb2_nonces.ctx_old = ctx;
+}
+
+bool
+oscore_appendixb2_free_ctx(oscore_ctx_t *ctx)
+{
+  uint32_t length_of_list = list_length(common_context_list);
+  LOG_DBG("Längden av listan före appendixb2 remove %u: \n", length_of_list);
+  return list_remove(common_context_list, ctx);
+}
+
+void
+oscore_appendixb2_set_nonce_kidcontext(uint8_t *new_nonce, uint8_t len_nonce)
+{
+  appendixb2_nonces.kid_context_nonce = new_nonce;
+  appendixb2_nonces.len_kid_context_nonce = len_nonce;
+}
+
+void
+oscore_appendixb2_set_nonce_aead(const uint8_t *new_nonce, uint8_t len_nonce)
+{
+  appendixb2_nonces.aead_nonce = malloc(sizeof(uint8_t) * len_nonce);
+  memcpy(appendixb2_nonces.aead_nonce, new_nonce, len_nonce);
+  appendixb2_nonces.len_aead_nonce = len_nonce;
+}
+
+void
+oscore_appendixb2_true(void)
+{
+  appendixb2_nonces.appendixb2_running = true;
+}
+
+void
+oscore_appendixb2_false(void)
+{
+  appendixb2_nonces.appendixb2_running = false;
+}
+
+void
+oscore_appendixb2_set_R1_and_len_R1(uint8_t *new_nonce, uint8_t len_nonce)
+{
+  appendixb2_nonces.R1 = new_nonce;
+  appendixb2_nonces.len_R1 = len_nonce;
+}
+
+void
+oscore_appendixb2_set_R2_and_len_R2(uint8_t *new_nonce, uint8_t len_nonce)
+{
+  appendixb2_nonces.R2 = new_nonce;
+  appendixb2_nonces.len_R2 = len_nonce;
+}
+
+void
+oscore_appendixb2_set_R3_and_len_R3(uint8_t *new_nonce, uint8_t len_nonce)
+{
+  appendixb2_nonces.R3 = new_nonce;
+  appendixb2_nonces.len_R3 = len_nonce;
+}
+
+/*
+void
+oscore_appendixb2_set_R1_and_len_R1(uint8_t *new_nonce, uint8_t len_nonce)
+{
+  appendixb2_nonces.R1 = malloc(sizeof(uint8_t ) * len_nonce);
+  memcpy(appendixb2_nonces.R1,new_nonce,len_nonce);
+  appendixb2_nonces.len_R1 = len_nonce;
+}
+
+void
+oscore_appendixb2_set_R2_and_len_R2(uint8_t *new_nonce, uint8_t len_nonce)
+{
+  appendixb2_nonces.R1 = malloc(sizeof(uint8_t ) * len_nonce);
+  memcpy(appendixb2_nonces.R1,new_nonce,len_nonce);
+  appendixb2_nonces.len_R1 = len_nonce;
+}
+
+void
+oscore_appendixb2_set_R3_and_len_R3(uint8_t *new_nonce, uint8_t len_nonce)
+{
+  appendixb2_nonces.R3 = malloc(sizeof(uint8_t ) * len_nonce);
+  memcpy(appendixb2_nonces.R3,new_nonce,len_nonce);
+  appendixb2_nonces.len_R3 = len_nonce;
+}
+*/
+
+
 
 #ifdef WITH_GROUPCOM
 void

@@ -1,4 +1,4 @@
-all: oscore-example-server oscore-example-client oscore-plugtest-server oscore-plugtest-client oscore-plugtest-client-kudos
+all: oscore-example-server oscore-example-client oscore-plugtest-server oscore-plugtest-client oscore-plugtest-client-kudos oscore-plugtest-client-appb2
 # use target "oscore-plugtest-server" explicitly when required
 
 CONTIKI=../..
