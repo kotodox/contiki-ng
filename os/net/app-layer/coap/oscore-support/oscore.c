@@ -190,8 +190,7 @@ oscore_encode_option_value(uint8_t *option_buffer, const cose_encrypt0_t *cose, 
     return 0;
   }
 
-  LOG_DBG("\n\n\n\n");
-  kudos_variables_t kudos_vars = oscore_kudos_get_variables();
+  kudos_variables_t *kudos_vars = oscore_kudos_get_variables();
   // kan nog ändras till att kolla om COSE objektet innehåller x och n
   
   
@@ -200,7 +199,7 @@ oscore_encode_option_value(uint8_t *option_buffer, const cose_encrypt0_t *cose, 
   // This may be needed inside if statement
   option_buffer[1] = 0;
 
-  if(kudos_vars.kudos_running == true){
+  if(kudos_vars->kudos_running == true){
     option_buffer[0] |= 0x80;
     option_buffer[1] |= 0x01;
     offset += 1;
@@ -254,16 +253,16 @@ oscore_encode_option_value(uint8_t *option_buffer, const cose_encrypt0_t *cose, 
   }
 
 
-  if((kudos_vars.kudos_running == true)){
+  if((kudos_vars->kudos_running == true)){
     uint8_t X;
     uint8_t *N;
-    if(kudos_vars.N2 == NULL){
-      X = kudos_vars.X1;
-      N = kudos_vars.N1;
+    if(kudos_vars->N2 == NULL){
+      X = kudos_vars->X1;
+      N = kudos_vars->N1;
     }
     else{
-      X = kudos_vars.X2;
-      N = kudos_vars.N2;
+      X = kudos_vars->X2;
+      N = kudos_vars->N2;
     }
     uint8_t m = (X & 0x0f);
     memcpy(&(option_buffer[offset]),&X,1); /*The len is hardcoded as 1 because according to KUDOS it always is like that*/
@@ -350,14 +349,14 @@ oscore_decode_option_value(uint8_t *option_value, int option_len, cose_encrypt0_
   //kontrollera att nonce flag eller d-flag är satt i option
   if((option_value[0] & 0x80) != 0) {  
       if((option_value[1] & 0x01) != 0){
-        kudos_variables_t kudos_vars = oscore_kudos_get_variables();
+        kudos_variables_t *kudos_vars = oscore_kudos_get_variables();
         LOG_DBG("KUDOS request iniatied\n");
         oscore_kudos_true();
         uint8_t X = option_value[offset];
         offset++;
         uint8_t m = (X & 0x0f);
         uint8_t *N = &(option_value[offset]);
-        if(kudos_vars.N1 == NULL){
+        if(kudos_vars->N1 == NULL){
           oscore_kudos_set_N1_and_X1(N,X);
         }
         else{
@@ -453,22 +452,7 @@ oscore_decode_message(coap_message_t *coap_pkt)
       oscore_ctx_t *ctx_new = malloc(sizeof(oscore_ctx_t));   // TODO
       
       LOG_DBG("\n\n\n\n\n");
-      // Client receiving first response
-      /*
-      if(appendixb2_vars->R2 == NULL && appendixb2_vars->R1 != NULL){
-        LOG_DBG("1\n");
-        uint8_t *R2 = malloc(len_of_nonce * sizeof(uint8_t));
-        memcpy(R2,nonce,len_of_nonce);
-        oscore_appendixb2_set_R2_and_len_R2(R2,len_of_nonce);
-        uint8_t *tmp = malloc((len_of_nonce + appendixb2_vars->len_R2) * sizeof(uint8_t));
-        //oscore_appendixb2_set_old_ctx(ctx);
-        oscore_free_ctx(ctx);
-        memcpy(tmp,nonce,len_of_nonce);
-        memcpy(tmp + len_of_nonce,appendixb2_vars->R1,appendixb2_vars->len_R2);
-        const uint8_t *new_id_context = tmp;
-        oscore_derive_ctx(ctx_new, master_secret, master_secret_len, master_salt, master_salt_len, 10, sender_id, sender_id_len, reciever_id, reciever_id_len, new_id_context, (len_of_nonce + appendixb2_vars->len_R2));
-        free(tmp);
-      }*/
+      
 
       // Server receiving first request
       if(appendixb2_vars->R1 == NULL){
@@ -510,17 +494,17 @@ oscore_decode_message(coap_message_t *coap_pkt)
     }
 
 
-    if(oscore_kudos_get_variables().kudos_running){
+    if(oscore_kudos_get_variables()->kudos_running){
       oscore_kudos_set_old_ctx(ctx);
       oscore_kudos_free_ctx(ctx);
-      kudos_variables_t kudos_vars = oscore_kudos_get_variables();
-      uint8_t *N1 = kudos_vars.N1;
-      uint8_t X1 = kudos_vars.X1;
+      kudos_variables_t *kudos_vars = oscore_kudos_get_variables();
+      uint8_t *N1 = kudos_vars->N1;
+      uint8_t X1 = kudos_vars->X1;
       uint8_t len_N1 = (X1 & 0x0f) + 1;
-      printf_hex_detailed("Before kudos free", kudos_vars.ctx_old->master_secret,kudos_vars.ctx_old->master_secret_len);
-      oscore_ctx_t *ctx_new = oscore_updateCtx(&(X1), sizeof(uint8_t),N1,len_N1, kudos_vars.ctx_old);  // TODO
+      printf_hex_detailed("Before kudos free", kudos_vars->ctx_old->master_secret,kudos_vars->ctx_old->master_secret_len);
+      oscore_ctx_t *ctx_new = oscore_updateCtx(&(X1), sizeof(uint8_t),N1,len_N1, kudos_vars->ctx_old);  // TODO
       ctx = ctx_new;
-      printf_hex_detailed("After kudos free",kudos_vars.ctx_old->master_secret,kudos_vars.ctx_old->master_secret_len);
+      printf_hex_detailed("After kudos free",kudos_vars->ctx_old->master_secret,kudos_vars->ctx_old->master_secret_len);
     }
     
 #ifdef WITH_GROUPCOM
@@ -564,12 +548,12 @@ oscore_decode_message(coap_message_t *coap_pkt)
 
     const uint64_t seq = exchange->seq;
     ctx = exchange->context;
-    if(oscore_kudos_get_variables().kudos_running){
-      kudos_variables_t kudos_vars = oscore_kudos_get_variables();
-      uint8_t *X1 = &kudos_vars.X1;
-      uint8_t *N1 = kudos_vars.N1;
-      uint8_t *N2 = kudos_vars.N2;
-      uint8_t *X2 = &kudos_vars.X2;
+    if(oscore_kudos_get_variables()->kudos_running){
+      kudos_variables_t *kudos_vars = oscore_kudos_get_variables();
+      uint8_t *X1 = &kudos_vars->X1;
+      uint8_t *N1 = kudos_vars->N1;
+      uint8_t *N2 = kudos_vars->N2;
+      uint8_t *X2 = &kudos_vars->X2;
       uint8_t len_N1 = (*X1 & 0x0f) + 1;
       uint8_t len_X1 = sizeof(uint8_t);
       uint8_t len_X2 = sizeof(uint8_t);
@@ -581,10 +565,16 @@ oscore_decode_message(coap_message_t *coap_pkt)
       uint8_t X1_cbor_len = len_X1 + 1;
       uint8_t X2_cbor_len = len_X2 + 1;
       oscore_free_ctx(ctx);
-      printf_hex_detailed("Before kudos free", kudos_vars.ctx_old->master_secret,kudos_vars.ctx_old->master_secret_len);
-      oscore_ctx_t *ctx_new = oscore_updateCtx(comb_X1_X2, X1_cbor_len + X2_cbor_len, comb_N1_N2,N1_cbor_len + N2_cbor_len, kudos_vars.ctx_old);  // TODO
-      ctx = ctx_new;      
-      printf_hex_detailed("After kudos free",kudos_vars.ctx_old->master_secret,kudos_vars.ctx_old->master_secret_len);
+      free(ctx);
+      printf_hex_detailed("Before kudos free", kudos_vars->ctx_old->master_secret,kudos_vars->ctx_old->master_secret_len);
+      
+      oscore_ctx_t *ctx_new = oscore_updateCtx(comb_X1_X2, X1_cbor_len + X2_cbor_len, comb_N1_N2,N1_cbor_len + N2_cbor_len, kudos_vars->ctx_old);  // TODO
+      ctx = ctx_new; 
+      coap_pkt->security_context = ctx_new;   
+      exchange->context = ctx_new;
+      printf_hex_detailed("After kudos free",kudos_vars->ctx_old->master_secret,kudos_vars->ctx_old->master_secret_len);
+
+      LOG_DBG("Här vi är right? \n");
     }
 
     
@@ -598,7 +588,6 @@ oscore_decode_message(coap_message_t *coap_pkt)
       if(cbor_check != NANOCBOR_OK){
         LOG_ERR("Couldnt decode byte string\n");
       }
-      //len_of_nonce = 8; //TMP before fix from richard
       printf_hex_detailed("Kid context in response :", nonce, len_of_nonce);
       app_b2_nonces_t *appendixb2_vars = oscore_appendixb2_get_nonces();
       oscore_appendixb2_true();
@@ -625,7 +614,6 @@ oscore_decode_message(coap_message_t *coap_pkt)
         memcpy(tmp + len_of_nonce,appendixb2_vars->R1,appendixb2_vars->len_R2);
         const uint8_t *new_id_context = tmp;
         oscore_derive_ctx(ctx_new, master_secret, master_secret_len, master_salt, master_salt_len, 10, sender_id, sender_id_len, reciever_id, reciever_id_len, new_id_context, (len_of_nonce + appendixb2_vars->len_R2));
-        LOG_DBG("\n\n\n\n\n\n  när kommer vi hit?  \n");
         free(ctx);
         ctx = ctx_new;
         //free(tmp);
@@ -688,11 +676,13 @@ oscore_decode_message(coap_message_t *coap_pkt)
   app_b2_nonces_t *appb2_vars = oscore_appendixb2_get_nonces();
   if(appb2_vars->appendixb2_running ){
     
+    // Ta bort if och spara bara else för server
+
     if(appb2_vars->aead_nonce !=NULL){
       cose_encrypt0_set_nonce(cose,appb2_vars->aead_nonce,appb2_vars->len_aead_nonce);
       LOG_DBG("Kommer vi hit?? \n");
     }else {
-
+    
       LOG_DBG("Eller hit?? \n");
       uint8_t app_b2_nonce[13];
       memcpy(app_b2_nonce,nonce_buffer,sizeof(nonce_buffer) );
@@ -782,18 +772,21 @@ oscore_populate_cose(const coap_message_t *pkt, cose_encrypt0_t *cose, const osc
   }
 #else
   app_b2_nonces_t *appendixb2_vars = oscore_appendixb2_get_nonces();
-  kudos_variables_t kudos_var = oscore_kudos_get_variables();
+  kudos_variables_t *kudos_var = oscore_kudos_get_variables();
   if(coap_is_request(pkt)) {
     if(sending){
+      LOG_DBG("Är vi här på sista meddelandet? \n");
+      LOG_DBG("cose seq %lu\n ", ctx->sender_context.seq);
       cose->partial_iv_len = u64tob(ctx->sender_context.seq, cose->partial_iv);
       cose_encrypt0_set_key_id(cose, ctx->sender_context.sender_id, ctx->sender_context.sender_id_len);
       cose_encrypt0_set_key(cose, ctx->sender_context.sender_key, COSE_algorithm_AES_CCM_16_64_128_KEY_LEN);
-      if(kudos_var.kudos_running){
+      if(kudos_var->kudos_running){
         cose->partial_iv_len = 1;
         uint8_t iv_value = 0x00; // The Partial IV value
         memset(cose->partial_iv, iv_value, sizeof(cose->partial_iv));
       }
       if(appendixb2_vars->appendixb2_running){
+        LOG_DBG("Här hoppas jag inte vi är \n");
         cose->partial_iv_len = 1;
         uint8_t iv_value = 0x00; // The Partial IV value
         memset(cose->partial_iv, iv_value, sizeof(cose->partial_iv));
@@ -829,12 +822,12 @@ oscore_populate_cose(const coap_message_t *pkt, cose_encrypt0_t *cose, const osc
         //if len_kid_context_nonce is above 23 it needs to be + 2 because of cbor headers. 
         cose->kid_context_len = (appendixb2_vars->len_kid_context_nonce + 1);
       }
-      else if (kudos_var.kudos_running){
+      else if (kudos_var->kudos_running){
         cose->partial_iv_len = 1;
         uint8_t iv_value = 0x00; // The Partial IV value
         memset(cose->partial_iv, iv_value, sizeof(cose->partial_iv));
       }
-      else {
+      else { //Lär behöva flytta ut vid separering av kod
         cose->partial_iv_len = u64tob(ctx->recipient_context.sliding_window.recent_seq, cose->partial_iv);
       }
 
@@ -843,7 +836,7 @@ oscore_populate_cose(const coap_message_t *pkt, cose_encrypt0_t *cose, const osc
       assert(cose->partial_iv_len > 0); /* Partial IV set when getting seq from exchange. */
       if(cose->response_flag){
         cose_encrypt0_set_key_id(cose, ctx->recipient_context.recipient_id, ctx->recipient_context.recipient_id_len);
-        if(kudos_var.kudos_running){
+        if(kudos_var->kudos_running){
           oscore_kudos_false();
         }
         cose->response_flag = false;
@@ -888,14 +881,17 @@ oscore_prepare_message(coap_message_t *coap_pkt, uint8_t *buffer)
     LOG_ERR("No context in OSCORE!\n");
     return PACKET_SERIALIZATION_ERROR;
   }
-  kudos_variables_t kudos_vars = oscore_kudos_get_variables();
-  if(kudos_vars.kudos_running && kudos_vars.N2 == NULL){
-    oscore_ctx_t *ctx_old = kudos_vars.ctx_old;
+  printf_hex_detailed("master secret: ", ctx->master_secret, ctx->master_secret_len);
+  printf_hex_detailed("master salt: ", ctx->master_salt, ctx->master_salt_len);
+
+  kudos_variables_t *kudos_vars = oscore_kudos_get_variables();
+  if(kudos_vars->kudos_running && kudos_vars->N2 == NULL){
+    oscore_ctx_t *ctx_old = kudos_vars->ctx_old;
     oscore_kudos_free_ctx(ctx);
     uint8_t len_X = sizeof(uint8_t);
-    uint8_t len_N = (kudos_vars.X1 & 0x0f) + 1;
-    const uint8_t *N = kudos_vars.N1;
-    const uint8_t X = kudos_vars.X1;
+    uint8_t len_N = (kudos_vars->X1 & 0x0f) + 1;
+    const uint8_t *N = kudos_vars->N1;
+    const uint8_t X = kudos_vars->X1;
     oscore_ctx_t *ctx_new = oscore_updateCtx(&X, len_X, N, len_N,ctx_old);
     ctx = ctx_new;
     coap_pkt->security_context = ctx_new;
@@ -977,15 +973,6 @@ oscore_prepare_message(coap_message_t *coap_pkt, uint8_t *buffer)
   printf_hex_detailed("common_iv", coap_pkt->security_context->common_iv, CONTEXT_INIT_VECT_LEN);
   printf_hex_detailed("Nonce or IV", appb2_vars->aead_nonce, appb2_vars->len_aead_nonce);
   } 
-  /*
-  else {
-
-    LOG_DBG("\n\n\n\n");
-    LOG_DBG("1 gång vill vi komma hit \n");
-    LOG_DBG("\n\n\n\n");
-    //appb2_vars->appendixb2_running = false;
-  }
-  */
   
   if(coap_is_request(coap_pkt)) {
     if(!oscore_set_exchange(coap_pkt->token, coap_pkt->token_len, ctx->sender_context.seq, ctx)) {

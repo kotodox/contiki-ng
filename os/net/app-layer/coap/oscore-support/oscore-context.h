@@ -221,7 +221,7 @@ uint8_t *oscore_kudos_comb(uint8_t *a, uint8_t len_a, uint8_t *b, uint8_t len_b)
 
 oscore_ctx_t *oscore_updateCtx(const uint8_t *X, uint8_t len_X, const uint8_t *N,const uint8_t len_N, oscore_ctx_t *old_Ctx);
 
-kudos_variables_t oscore_kudos_get_variables(void);
+kudos_variables_t *oscore_kudos_get_variables(void);
 
 // End of kudos functions
 

@@ -113,9 +113,6 @@ PROCESS_THREAD(er_example_client, ev, data)
     PROCESS_YIELD();
     if(etimer_expired(&et)) {
       switch ( test ) {
-      	/*case 0:
-	  test0_a(request);
-	  break;*/
         case 0:
 
           
@@ -130,9 +127,14 @@ PROCESS_THREAD(er_example_client, ev, data)
           oscore_kudos_set_old_ctx(&context);
           test_kudos(request);
           break;
-          
+        
+        case 1:
+          //printf_hex_detailed("master secret: ", context->master_secret, context->master_secret_len);
+          //printf_hex_detailed("master salt: ", context->master_salt, context->master_salt_len);
+          break;
           
     	}
+
         coap_set_token(request, token, 2);
       	COAP_BLOCKING_REQUEST(&server_ep, request, response_handler);
 
@@ -145,10 +147,19 @@ PROCESS_THREAD(er_example_client, ev, data)
   PROCESS_END();
 }
 
+static void
+printf_hex_detailed(const char* name, const uint8_t *data, size_t len)
+{
+  LOG_DBG("%s (len=%zu): ", name, len);
+  LOG_DBG_BYTES(data, len);
+  LOG_DBG_("\n");
+}
+
 void response_handler(coap_message_t *response){
   printf("Response handler test: %d\n", test);
   switch (test) {
     case 0:
+      
       test_kudos_handler(response);
       break;
     }

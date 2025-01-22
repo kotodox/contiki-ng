@@ -328,7 +328,7 @@ oscore_updateCtx(const uint8_t *X,uint8_t len_X, const uint8_t *N,uint8_t len_N,
   const uint8_t *reciever_id = old_Ctx->recipient_context.recipient_id;
   uint8_t reciever_id_len = old_Ctx->recipient_context.recipient_id_len;
   uint8_t alg = old_Ctx->alg;
-  printf_hex_detailed("old secret :",old_Ctx->master_secret, oscore_key_length );
+  printf_hex_detailed("old secret :",old_Ctx->master_secret, oscore_key_length);
   LOG_DBG("\n");
   hkdf_expand(old_Ctx->master_secret, oscore_key_length,expandlabel, expandlabel_len, MSECRET_NEW, oscore_key_length);
   printf_hex_detailed("Master secret new : ", MSECRET_NEW, oscore_key_length);
@@ -337,7 +337,9 @@ oscore_updateCtx(const uint8_t *X,uint8_t len_X, const uint8_t *N,uint8_t len_N,
   uint32_t length_of_list = list_length(common_context_list);
   LOG_DBG("Längden av listan :%u \n", length_of_list);
   free(MSECRET_NEW);
-  free(X_N);
+  //free(X_N);
+
+  list_length(common_context_list);
   return CTX_OUT;
 }
 
@@ -438,10 +440,10 @@ oscore_kudos_false(void)
   kudos_nonces.kudos_running = false;
 }
 
-kudos_variables_t
+kudos_variables_t *
 oscore_kudos_get_variables(void)
 {
-  return kudos_nonces;
+  return &kudos_nonces;
 }
 
 bool

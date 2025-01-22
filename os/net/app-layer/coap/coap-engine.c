@@ -351,10 +351,10 @@ coap_receive(const coap_endpoint_t *src,
           }
 
 
-          else if(oscore_kudos_get_variables().kudos_running){
-            kudos_variables_t kudos_vars = oscore_kudos_get_variables();
-            uint8_t *X1 = &kudos_vars.X1;
-            uint8_t *N1 = kudos_vars.N1;
+          else if(oscore_kudos_get_variables()->kudos_running){
+            kudos_variables_t *kudos_vars = oscore_kudos_get_variables();
+            uint8_t *X1 = &kudos_vars->X1;
+            uint8_t *N1 = kudos_vars->N1;
             uint8_t len_N1 = (*X1 & 0x0f) + 1;
             uint8_t len_X1 = sizeof(uint8_t);
             uint8_t len_X2 = sizeof(uint8_t);
@@ -385,6 +385,7 @@ coap_receive(const coap_endpoint_t *src,
               N2 = kudos_vars.N2;
               len_N2 = (*X2 & 0x0f) + 1;
             }*/
+            
             uint8_t *comb_N1_N2 = oscore_kudos_comb(N1, len_N1, N2, len_N2);
             uint8_t *comb_X1_X2 = oscore_kudos_comb(X1, len_X1, X2, len_X2);
             
@@ -395,7 +396,7 @@ coap_receive(const coap_endpoint_t *src,
             
             oscore_free_ctx(message->security_context);
             free(message->security_context);
-            oscore_ctx_t *ctx_old = kudos_vars.ctx_old; // TODO
+            oscore_ctx_t *ctx_old = kudos_vars->ctx_old; // TODO
             oscore_ctx_t *ctx_new = oscore_updateCtx(comb_X1_X2, X1_cbor_len + X2_cbor_len, comb_N1_N2, N1_cbor_len + N2_cbor_len ,ctx_old);
             free(comb_X1_X2);
             free(comb_N1_N2);

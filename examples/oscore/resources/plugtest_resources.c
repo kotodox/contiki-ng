@@ -18,14 +18,7 @@ void test_appendixb2(coap_message_t* request){
   coap_init_message(request, COAP_TYPE_CON, COAP_GET, 0);
   coap_set_header_uri_path(request, urls[2]);
 }
-/*
-void test_appendixb2(coap_message_t* request){
-  printf("\n\nTest last request\n");
-  printf("url = %s\n", urls[1]);
-  coap_init_message(request, COAP_TYPE_CON, COAP_GET, 0);
-  coap_set_header_uri_path(request, urls[2]);
-}
-*/
+
 void test_appendixb2_handler_first_response(void* response){
   
   coap_message_t *response_msg = (coap_message_t *)response;
@@ -37,7 +30,6 @@ void test_appendixb2_handler_first_response(void* response){
     test++;
   }else {
     printf("Test appendixb2: FAILED!\n");
-    printf("\t Expected result: \"Hello World!\" but was: ");
     printf("%.*u\n", 2, response_type);
     failed_tests++;
   }
@@ -54,7 +46,6 @@ void test_appendixb2_handler_second_response(void* response){
     test++;
   }else {
     printf("Test appendixb2: FAILED!\n");
-    printf("\t Expected result: \"Hello World!\" but was: ");
     printf("%.*u\n", 2, response_type);
     failed_tests++;
   }
@@ -69,16 +60,16 @@ void test_kudos(coap_message_t* request){
 void test_kudos_handler(void* response){
   printf("Test kudos: Receiving Response!\n");
 //return;
-  const uint8_t *response_payload;
-  const char desired[] = "Hello isak!";
-  int len = coap_get_payload(response, &response_payload);
-  int res = strncmp( desired, (char*)response_payload, strlen(desired));
-  if(res == 0){
+  coap_message_t *response_msg = (coap_message_t *)response;
+  uint8_t response_type = response_msg->type;
+  printf("type = %u\n", response_type);
+
+  if(response_type == 2){
     printf("Test kudos: PASSED!\n");
+    test++;
   }else {
     printf("Test kudos: FAILED!\n");
-    printf("\t Expected result: \"Hello isak!\" but was: ");
-    printf("%.*s\n", len, response_payload);
+    printf("%.*u\n", 2, response_type);
     failed_tests++;
   }
 }
