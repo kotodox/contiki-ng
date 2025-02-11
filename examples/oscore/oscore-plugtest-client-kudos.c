@@ -106,6 +106,8 @@ PROCESS_THREAD(er_example_client, ev, data)
 	 printf("Not all URIs associated with contexts!\n");
   } 
 
+  oscore_memory_init(); // only use for kudos
+
   #endif /* WITH_OSCORE */
   etimer_set(&et, TOGGLE_INTERVAL * CLOCK_SECOND);
   
@@ -115,15 +117,17 @@ PROCESS_THREAD(er_example_client, ev, data)
       switch ( test ) {
         case 0:
 
-          
+          kudos_variables_t *kudos_vars = oscore_kudos_get_variables();
           oscore_kudos_true();
           uint8_t X = 7;
           uint8_t len_N = 8;
-          uint8_t *N = malloc(len_N * sizeof(uint8_t));
+         // uint8_t *N = malloc(len_N * sizeof(uint8_t));
+          uint8_t *N = kudos_vars->N1;
           for(int i=0;i<len_N;i++){
               N[i] = (uint8_t)random_rand();
             }
-          oscore_kudos_set_N1_and_X1(N,X);
+          //oscore_kudos_set_N1_and_X1(N,X);
+          kudos_vars->X1 = X;
           oscore_kudos_set_old_ctx(&context);
           test_kudos(request);
           break;

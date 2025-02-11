@@ -316,16 +316,18 @@ coap_receive(const coap_endpoint_t *src,
             uint8_t sender_id_len = message->security_context->sender_context.sender_id_len;
             const uint8_t *reciever_id = message->security_context->recipient_context.recipient_id;
             uint8_t reciever_id_len = message->security_context->recipient_context.recipient_id_len;
-            oscore_ctx_t *ctx_new = malloc(sizeof(oscore_ctx_t));
+            oscore_ctx_t *ctx_new = oscore_memory_alloc();
+            //oscore_ctx_t *ctx_new = malloc(sizeof(oscore_ctx_t));
             //oscore_ctx_t *ctx;
-            uint8_t *new_nonce = malloc(8 * sizeof(uint8_t));
+            //uint8_t *new_nonce = malloc(8 * sizeof(uint8_t));
+            uint8_t new_nonce[MAX_LEN_NONCES];
             uint8_t len_new_nonce = 8;
             uint8_t *old_nonce;
             uint8_t len_old_nonce;
             for(int i=0;i<len_new_nonce;i++){
               new_nonce[i] = (uint8_t)random_rand();
             }
-            if(appendixb2_vars->R2 == NULL){
+            if(appendixb2_vars->len_R2 == 0){
               oscore_appendixb2_set_R2_and_len_R2(new_nonce,len_new_nonce);
               old_nonce = appendixb2_vars->R1;
               len_old_nonce = appendixb2_vars->len_R1;
@@ -336,15 +338,19 @@ coap_receive(const coap_endpoint_t *src,
             }
             
             uint8_t id_context_len = len_new_nonce + len_old_nonce;
-            uint8_t *new_id_context = malloc((len_old_nonce + len_new_nonce) * sizeof(uint8_t));
-            memcpy(new_id_context,new_nonce,len_new_nonce);
+            //uint8_t *new_id_context = malloc((len_old_nonce + len_new_nonce) * sizeof(uint8_t));
+            uint8_t new_id_context[MAX_LEN_NONCES * 2]; // Same length as MAX_LEN_NONCES * 2 defined in oscore_contexts.c.  may be unnecesary...
+            memcpy(new_id_context,new_nonce,len_new_nonce); 
             memcpy(new_id_context + len_new_nonce,old_nonce,len_old_nonce);
             oscore_appendixb2_set_nonce_kidcontext(new_nonce, len_new_nonce);
             
             oscore_derive_ctx(ctx_new, master_secret, master_secret_len, master_salt, master_salt_len, 10, sender_id, sender_id_len, reciever_id, reciever_id_len, new_id_context, id_context_len);
-            free(new_id_context);
+            //oscore_derive_ctx(ctx_new, master_secret, master_secret_len, master_salt, master_salt_len, 10, sender_id, sender_id_len, reciever_id, reciever_id_len, appendixb2_vars->kid_context_nonce, appendixb2_vars->len_kid_context_nonce);
+
+            //free(new_id_context);
             oscore_free_ctx(message->security_context);
-            free(message->security_context);
+            oscore_memory_free(message->security_context);
+            //free(message->security_context);
             message->security_context = ctx_new;
             coap_set_oscore(response, ctx_new);
             
@@ -364,11 +370,12 @@ coap_receive(const coap_endpoint_t *src,
 
             
             X2 = X1; //bad practise
-            N2 = malloc(len_N2 * sizeof(uint8_t));
+            N2 = kudos_vars->N2;
             for(int i=0;i<len_N2;i++){
               N2[i] = (uint8_t)random_rand();
             }
-            oscore_kudos_set_N2_and_X2(N2, *X2);
+            kudos_vars->X2 = *X2;
+            //oscore_kudos_set_N2_and_X2(N2, *X2);
             
             /*
             if(kudos_vars.N2 == NULL){
@@ -385,9 +392,14 @@ coap_receive(const coap_endpoint_t *src,
               N2 = kudos_vars.N2;
               len_N2 = (*X2 & 0x0f) + 1;
             }*/
-            
-            uint8_t *comb_N1_N2 = oscore_kudos_comb(N1, len_N1, N2, len_N2);
-            uint8_t *comb_X1_X2 = oscore_kudos_comb(X1, len_X1, X2, len_X2);
+
+            //If nonces longer than 21 bytes its + 4
+            uint8_t comb_N1_N2[MAX_LEN_NONCES + 2];
+
+            // Should never be more than 4 since X is 1 byte and with cbor extra 1 byte so cbor X1 + cbor X2 = 2 + 2
+            uint8_t comb_X1_X2[4];
+            oscore_kudos_comb(comb_N1_N2, N1, len_N1, N2, len_N2);
+            oscore_kudos_comb(comb_X1_X2, X1, len_X1, X2, len_X2);
             
             uint8_t N1_cbor_len = len_N1 + 1;
             uint8_t N2_cbor_len = len_N2 + 1;
@@ -395,11 +407,12 @@ coap_receive(const coap_endpoint_t *src,
             uint8_t X2_cbor_len = len_X2 + 1;
             
             oscore_free_ctx(message->security_context);
-            free(message->security_context);
+            //free(message->security_context);
+            oscore_memory_free(message->security_context);
             oscore_ctx_t *ctx_old = kudos_vars->ctx_old; // TODO
             oscore_ctx_t *ctx_new = oscore_updateCtx(comb_X1_X2, X1_cbor_len + X2_cbor_len, comb_N1_N2, N1_cbor_len + N2_cbor_len ,ctx_old);
-            free(comb_X1_X2);
-            free(comb_N1_N2);
+            //free(comb_X1_X2);
+            //free(comb_N1_N2);
             message->security_context = ctx_new;
             coap_set_oscore(response, ctx_new);
           }

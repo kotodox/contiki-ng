@@ -104,6 +104,11 @@ PROCESS_THREAD(plugtest_server, ev, data)
     printf("context FOUND!\n");
   }
 
+  // TODO iddef
+  
+  oscore_memory_init(); // only use for appb2 and kudos
+
+
   /* Activate the application-specific resources. */
 
   coap_activate_resource(&res_hello, "oscore/hello/coap");

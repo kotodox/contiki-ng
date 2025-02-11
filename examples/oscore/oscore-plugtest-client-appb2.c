@@ -47,7 +47,6 @@
 #include "appendix_b2.h"
 #include "res_kudos.h"
 
-
 #ifdef WITH_OSCORE
 #include "oscore.h"
 
@@ -86,7 +85,6 @@ uint8_t token[2] = { 0x05, 0x05};
 #define NUMBER_OF_URLS 4
 char *service_urls[NUMBER_OF_URLS] =
 { ".well-known/core", "oscore/hello/coap", "/rederivation/blackhole/","well-known/kudos/"};
-// Todo lägg in en resource för att kontrollera response
 
 PROCESS_THREAD(er_example_client, ev, data)
 {
@@ -106,22 +104,23 @@ PROCESS_THREAD(er_example_client, ev, data)
 	 printf("Not all URIs associated with contexts!\n");
   } 
   printf("Vi är här nån gång va \n");
+
+  oscore_memory_init(); // only use for appb2
+
   #endif /* WITH_OSCORE */
   etimer_set(&et, TOGGLE_INTERVAL * CLOCK_SECOND);
   
   while(1) {
     PROCESS_YIELD();
+    app_b2_nonces_t *appb2_vars = oscore_appendixb2_get_nonces();
     if(etimer_expired(&et)) {
       switch ( test ) {
-      	/*case 0:
-	  test0_a(request);
-	  break;*/
+      	
         case 0:
-          
           
           oscore_appendixb2_true();
           uint8_t len_R1 = 8;
-          uint8_t *R1 = malloc(len_R1 * sizeof(uint8_t));
+          uint8_t *R1 = appb2_vars->R1;
           for(int i=0;i<len_R1;i++){
               R1[i] = (uint8_t)random_rand();
             }
@@ -133,11 +132,13 @@ PROCESS_THREAD(er_example_client, ev, data)
           
         case 1:
           uint8_t len_R3 = 8;
-          uint8_t *R3 = malloc(len_R3 * sizeof(uint8_t));
+          //uint8_t *R3 = malloc(len_R3 * sizeof(uint8_t));
+          uint8_t *R3 = appb2_vars->R3;
           for(int i=0;i<len_R3;i++){
               R3[i] = (uint8_t)random_rand();
             }
-          oscore_appendixb2_set_R3_and_len_R3(R3,len_R3);
+          appb2_vars->len_R3 = len_R3;
+          //oscore_appendixb2_set_R3_and_len_R3(R3,len_R3);
           test_appendixb2(request);
           
           break;

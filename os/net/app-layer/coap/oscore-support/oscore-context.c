@@ -65,26 +65,66 @@ MEMB(exchange_memb, oscore_exchange_t, TOKEN_SEQ_NUM);
 LIST(common_context_list);
 LIST(exchange_list);
 
+//#define MAX_LEN_NONCES 8 // Max length of the nonces used in appendix b.2 and Kudos 
+
+static uint8_t R1_buffer[MAX_LEN_NONCES];
+static uint8_t R2_buffer[MAX_LEN_NONCES];
+static uint8_t R3_buffer[MAX_LEN_NONCES];
+static uint8_t kid_context_nonce_buffer[MAX_LEN_NONCES * 2];
+static uint8_t aead_nonce_buffer[13];
+
 app_b2_nonces_t appendixb2_nonces = {
   .appendixb2_running = false,
-  .R1 = NULL,
+  .R1 = R1_buffer,
   .len_R1 = 0,
-  .R2 = NULL,
+  .R2 = R2_buffer,
   .len_R2 = 0,
-  .R3 = NULL,
+  .R3 = R3_buffer,
   .len_R3 = 0,
-  .kid_context_nonce = NULL,        // Pointer initialized to NULL
+  .kid_context_nonce = kid_context_nonce_buffer,        // Pointer initialized to NULL
   .len_kid_context_nonce = 0,       // Length initialized to 0
-  .aead_nonce = NULL,                // Pointer initialized to NULL
+  .aead_nonce = aead_nonce_buffer,                // Pointer initialized to NULL
   .len_aead_nonce = 0,                // Length initialized to 0
   .ctx_old = NULL
 };
 
+// Define the memory pool for 2 blocks of oscore_ctx_t structures
+MEMB(oscore_ctx_pool, oscore_ctx_t, 2);
+
+
+// Function to initialize the memory pool
+void oscore_memory_init(void) {
+    memb_init(&oscore_ctx_pool);
+    LOG_DBG("OSCORE memory pool initialized.\n");
+}
+
+// Allocate a block from the memory pool
+oscore_ctx_t *oscore_memory_alloc(void) {
+    oscore_ctx_t *ctx = (oscore_ctx_t *)memb_alloc(&oscore_ctx_pool);
+    if (ctx == NULL) {
+        LOG_DBG("OSCORE memory pool is full! Allocation failed.\n");
+    }
+    return ctx;  // Return the allocated block (or NULL if full)
+}
+
+// Free a block back to the memory pool
+void oscore_memory_free(oscore_ctx_t *ctx) {
+    if (ctx != NULL) {
+        memb_free(&oscore_ctx_pool, ctx);  // Free the block
+        LOG_DBG("OSCORE memory block freed.\n");
+    } else {
+        LOG_DBG("Attempted to free a NULL pointer!\n");
+    }
+}
+
+static uint8_t N1_buffer[MAX_LEN_NONCES];
+static uint8_t N2_buffer[MAX_LEN_NONCES];
+
 kudos_variables_t kudos_nonces = {
   .kudos_running = false,
-  .N1 = NULL,
+  .N1 = N1_buffer,
   .X1 = 0,
-  .N2 = NULL,
+  .N2 = N2_buffer,
   .X2 = 0,
   .ctx_old = NULL
 };
@@ -295,8 +335,11 @@ oscore_updateCtx(const uint8_t *X,uint8_t len_X, const uint8_t *N,uint8_t len_N,
 {
 
   // TODO
-  oscore_ctx_t *CTX_OUT = malloc(sizeof(oscore_ctx_t)); // kanske behövs malloc   // The new Security Context
-  uint8_t *MSECRET_NEW;   // The new Master Secret
+  //oscore_ctx_t *CTX_OUT = malloc(sizeof(oscore_ctx_t)); // kanske behövs malloc   // The new Security Context
+  oscore_ctx_t *CTX_OUT = oscore_memory_alloc();
+  //uint8_t *MSECRET_NEW;   // The new Master Secret
+  uint8_t MSECRET_NEW[MAX_LEN_MASTERSECRET_NEW];   // The new Master Secret
+
   const uint8_t *MSALT_NEW = N;    // The new Master Salt  
   uint8_t X_cbor_len = len_X + 1;
   uint8_t *X_cbor;
@@ -315,12 +358,15 @@ oscore_updateCtx(const uint8_t *X,uint8_t len_X, const uint8_t *N,uint8_t len_N,
   memcpy(X_N,X_cbor,X_cbor_len);
   memcpy(X_N + X_cbor_len,N_cbor,N_cbor_len);
   
-  uint8_t oscore_key_length = old_Ctx->master_secret_len;
+  uint8_t oscore_key_length = MAX_LEN_MASTERSECRET_NEW;
 
   char *label = "key update";
   uint8_t expandlabel[HKDF_INFO_MAXLEN];
   uint8_t expandlabel_len = compose_Expandlabel(expandlabel,HKDF_INFO_MAXLEN, label, X_N, len_X_N, oscore_key_length);
-  MSECRET_NEW = malloc(oscore_key_length*sizeof(u_int8_t));
+  
+  //MSECRET_NEW = malloc(oscore_key_length*sizeof(u_int8_t));
+  
+  printf_hex_detailed("X is: ",X,len_X);
   printf_hex_detailed("X_N is: ",X_N,len_X_N);
   LOG_DBG("\n");
   const uint8_t *sender_id = old_Ctx->sender_context.sender_id;
@@ -336,7 +382,7 @@ oscore_updateCtx(const uint8_t *X,uint8_t len_X, const uint8_t *N,uint8_t len_N,
   oscore_derive_ctx(CTX_OUT, MSECRET_NEW, oscore_key_length, MSALT_NEW, len_N, alg, sender_id, sender_id_len,reciever_id, reciever_id_len, NULL, 0 );
   uint32_t length_of_list = list_length(common_context_list);
   LOG_DBG("Längden av listan :%u \n", length_of_list);
-  free(MSECRET_NEW);
+  //free(MSECRET_NEW);
   //free(X_N);
 
   list_length(common_context_list);
@@ -461,7 +507,7 @@ oscore_kudos_set_old_ctx(oscore_ctx_t *ctx)
 }
 
 uint8_t *
-oscore_kudos_comb(uint8_t *a, uint8_t len_a, uint8_t *b, uint8_t len_b)
+oscore_kudos_comb(uint8_t *buffer, uint8_t *a, uint8_t len_a, uint8_t *b, uint8_t len_b)
 {
   uint8_t a_cbor_len = len_a + 1;
   uint8_t b_cbor_len = len_b + 1;
@@ -473,10 +519,10 @@ oscore_kudos_comb(uint8_t *a, uint8_t len_a, uint8_t *b, uint8_t len_b)
   b_cbor = oscore_cbor_byte_string(b,len_b);
   
   /*HERE CHANGE*/
-  uint8_t *comb_a_b = malloc((a_cbor_len + b_cbor_len) * sizeof(uint8_t));
-  memcpy(comb_a_b,a_cbor,a_cbor_len);
-  memcpy(comb_a_b + a_cbor_len,b_cbor,b_cbor_len);
-  return comb_a_b;
+  //uint8_t *comb_a_b = malloc((a_cbor_len + b_cbor_len) * sizeof(uint8_t));
+  memcpy(buffer,a_cbor,a_cbor_len);
+  memcpy(buffer + a_cbor_len,b_cbor,b_cbor_len);
+  return buffer;
 }
 
 uint8_t *
@@ -518,10 +564,18 @@ oscore_appendixb2_free_ctx(oscore_ctx_t *ctx)
   return list_remove(common_context_list, ctx);
 }
 
+/*
 void
 oscore_appendixb2_set_nonce_kidcontext(uint8_t *new_nonce, uint8_t len_nonce)
 {
   appendixb2_nonces.kid_context_nonce = new_nonce;
+  appendixb2_nonces.len_kid_context_nonce = len_nonce;
+}
+*/
+void
+oscore_appendixb2_set_nonce_kidcontext(uint8_t *new_nonce, uint8_t len_nonce)
+{
+  memcpy(appendixb2_nonces.kid_context_nonce, new_nonce,len_nonce);
   appendixb2_nonces.len_kid_context_nonce = len_nonce;
 }
 
@@ -545,6 +599,10 @@ oscore_appendixb2_false(void)
   appendixb2_nonces.appendixb2_running = false;
 }
 
+
+
+
+/*
 void
 oscore_appendixb2_set_R1_and_len_R1(uint8_t *new_nonce, uint8_t len_nonce)
 {
@@ -565,12 +623,11 @@ oscore_appendixb2_set_R3_and_len_R3(uint8_t *new_nonce, uint8_t len_nonce)
   appendixb2_nonces.R3 = new_nonce;
   appendixb2_nonces.len_R3 = len_nonce;
 }
+*/
 
-/*
 void
 oscore_appendixb2_set_R1_and_len_R1(uint8_t *new_nonce, uint8_t len_nonce)
 {
-  appendixb2_nonces.R1 = malloc(sizeof(uint8_t ) * len_nonce);
   memcpy(appendixb2_nonces.R1,new_nonce,len_nonce);
   appendixb2_nonces.len_R1 = len_nonce;
 }
@@ -578,19 +635,17 @@ oscore_appendixb2_set_R1_and_len_R1(uint8_t *new_nonce, uint8_t len_nonce)
 void
 oscore_appendixb2_set_R2_and_len_R2(uint8_t *new_nonce, uint8_t len_nonce)
 {
-  appendixb2_nonces.R1 = malloc(sizeof(uint8_t ) * len_nonce);
-  memcpy(appendixb2_nonces.R1,new_nonce,len_nonce);
-  appendixb2_nonces.len_R1 = len_nonce;
+  memcpy(appendixb2_nonces.R2,new_nonce,len_nonce);
+  appendixb2_nonces.len_R2 = len_nonce;
 }
 
 void
 oscore_appendixb2_set_R3_and_len_R3(uint8_t *new_nonce, uint8_t len_nonce)
 {
-  appendixb2_nonces.R3 = malloc(sizeof(uint8_t ) * len_nonce);
   memcpy(appendixb2_nonces.R3,new_nonce,len_nonce);
   appendixb2_nonces.len_R3 = len_nonce;
 }
-*/
+
 
 
 
