@@ -105,9 +105,12 @@ PROCESS_THREAD(plugtest_server, ev, data)
   }
 
   // TODO iddef
-  
+  #ifdef KUDOS
   oscore_memory_init(); // only use for appb2 and kudos
-
+  #endif 
+  #ifdef APPb2
+  oscore_memory_init(); // only use for appb2 and kudos
+  #endif 
 
   /* Activate the application-specific resources. */
 
@@ -118,8 +121,15 @@ PROCESS_THREAD(plugtest_server, ev, data)
   coap_activate_resource(&res_hello6, "oscore/hello/6");
   coap_activate_resource(&res_hello7, "oscore/hello/7");
   coap_activate_resource(&res_test,   "oscore/test");
+
+  #ifdef APPb2
   coap_activate_resource(&res_appb2,  "rederivation/blackhole");
   coap_activate_resource(&res_kudos,  "well-known/kudos");
+  #endif
+  #ifdef KUDOS
+  coap_activate_resource(&res_kudos,  "well-known/kudos");
+  #endif 
+  
 
   
   oscore_protect_resource(&res_hello1);
@@ -128,12 +138,18 @@ PROCESS_THREAD(plugtest_server, ev, data)
   oscore_protect_resource(&res_hello6);
   oscore_protect_resource(&res_hello7);
   oscore_protect_resource(&res_test);
-  oscore_protect_resource(&res_appb2);
+  #ifdef APPb2
   oscore_protect_resource(&res_kudos);
+  oscore_protect_resource(&res_appb2);
+  #endif
+  #ifdef KUDOS
+  oscore_protect_resource(&res_kudos);
+  #endif
 
 
   /* Define application-specific events here. */
   while(1) {
+    
     PROCESS_WAIT_EVENT();
   }                             /* while (1) */
 

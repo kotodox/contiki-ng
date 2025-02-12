@@ -114,14 +114,13 @@ PROCESS_THREAD(er_example_client, ev, data)
   while(1) {
     PROCESS_YIELD();
     if(etimer_expired(&et)) {
+      kudos_variables_t *kudos_vars = oscore_kudos_get_variables();
       switch ( test ) {
         case 0:
 
-          kudos_variables_t *kudos_vars = oscore_kudos_get_variables();
           oscore_kudos_true();
           uint8_t X = 7;
           uint8_t len_N = 8;
-         // uint8_t *N = malloc(len_N * sizeof(uint8_t));
           uint8_t *N = kudos_vars->N1;
           for(int i=0;i<len_N;i++){
               N[i] = (uint8_t)random_rand();

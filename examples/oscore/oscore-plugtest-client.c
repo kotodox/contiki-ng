@@ -44,8 +44,7 @@
 #include "coap-blocking-api.h"
 #include "dev/button-sensor.h"
 #include "plugtest_resources.h"
-#include "appendix_b2.h"
-#include "res_kudos.h"
+
 
 
 #ifdef WITH_OSCORE
@@ -83,9 +82,9 @@ static struct etimer et;
 
 uint8_t token[2] = { 0x05, 0x05};
 
-#define NUMBER_OF_URLS 9
+#define NUMBER_OF_URLS 8
 char *service_urls[NUMBER_OF_URLS] =
-{ ".well-known/core", "oscore/hello/coap", "oscore/hello/1", "oscore/hello/2", "oscore/hello/3", "oscore/hello/6", "oscore/hello/7", "oscore/test", "oscore/app_b2"};
+{ ".well-known/core", "oscore/hello/coap", "oscore/hello/1", "oscore/hello/2", "oscore/hello/3", "oscore/hello/6", "oscore/hello/7", "oscore/test"};
 
 
 PROCESS_THREAD(er_example_client, ev, data)
@@ -106,8 +105,6 @@ PROCESS_THREAD(er_example_client, ev, data)
   ret += oscore_ep_ctx_set_association(&server_ep, service_urls[5], &context);
   ret += oscore_ep_ctx_set_association(&server_ep, service_urls[6], &context);
   ret += oscore_ep_ctx_set_association(&server_ep, service_urls[7], &context);
-  ret += oscore_ep_ctx_set_association(&server_ep, service_urls[8], &context);
- // ret += oscore_ep_ctx_set_association(&server_ep, service_urls[9], &context);
   if( ret != 6) {
 	 printf("Not all URIs associated with contexts!\n");
   } 

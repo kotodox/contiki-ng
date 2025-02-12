@@ -108,6 +108,7 @@ typedef struct cose_encrypt0_t {
   const uint8_t *aad;
   uint8_t *content;
 
+  //Fix for bug that existed 
   bool response_flag;
 
  

@@ -3,6 +3,8 @@ MAKE_WITH_OSCORE ?= 0
 MAKE_WITH_GROUPCOM ?= 0
 MAKE_WITH_HW_CRYPTO ?= 0
 
+
+
 ifeq ($(MAKE_WITH_OSCORE),1)
 
  TINYDTLS_PATH := os/net/security/tinydtls

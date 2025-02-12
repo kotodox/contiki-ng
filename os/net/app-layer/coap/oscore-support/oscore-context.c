@@ -57,7 +57,7 @@
 #define LOG_LEVEL LOG_LEVEL_COAP
 
 #ifndef OSCORE_MAX_ID_CONTEXT_LEN
-#define OSCORE_MAX_ID_CONTEXT_LEN 16
+#define OSCORE_MAX_ID_CONTEXT_LEN 16 /* Is 16 because of appendixb2, can be shorter normally */
 #endif
 
 MEMB(exchange_memb, oscore_exchange_t, TOKEN_SEQ_NUM);
@@ -66,14 +66,14 @@ LIST(common_context_list);
 LIST(exchange_list);
 
 //#define MAX_LEN_NONCES 8 // Max length of the nonces used in appendix b.2 and Kudos 
-
+#ifdef APPb2
 static uint8_t R1_buffer[MAX_LEN_NONCES];
 static uint8_t R2_buffer[MAX_LEN_NONCES];
 static uint8_t R3_buffer[MAX_LEN_NONCES];
 static uint8_t kid_context_nonce_buffer[MAX_LEN_NONCES * 2];
 static uint8_t aead_nonce_buffer[13];
 
-app_b2_nonces_t appendixb2_nonces = {
+static app_b2_nonces_t appendixb2_nonces = {
   .appendixb2_running = false,
   .R1 = R1_buffer,
   .len_R1 = 0,
@@ -90,7 +90,6 @@ app_b2_nonces_t appendixb2_nonces = {
 
 // Define the memory pool for 2 blocks of oscore_ctx_t structures
 MEMB(oscore_ctx_pool, oscore_ctx_t, 2);
-
 
 // Function to initialize the memory pool
 void oscore_memory_init(void) {
@@ -116,11 +115,13 @@ void oscore_memory_free(oscore_ctx_t *ctx) {
         LOG_DBG("Attempted to free a NULL pointer!\n");
     }
 }
+#endif /* APPb2 */
 
+#ifdef KUDOS
 static uint8_t N1_buffer[MAX_LEN_NONCES];
 static uint8_t N2_buffer[MAX_LEN_NONCES];
 
-kudos_variables_t kudos_nonces = {
+static kudos_variables_t kudos_nonces = {
   .kudos_running = false,
   .N1 = N1_buffer,
   .X1 = 0,
@@ -129,7 +130,37 @@ kudos_variables_t kudos_nonces = {
   .ctx_old = NULL
 };
 
+// Define the memory pool for 2 blocks of oscore_ctx_t structures
+MEMB(oscore_ctx_pool, oscore_ctx_t, 2);
 
+// Function to initialize the memory pool
+void oscore_memory_init(void) {
+    memb_init(&oscore_ctx_pool);
+    LOG_DBG("OSCORE memory pool initialized.\n");
+}
+
+// Allocate a block from the memory pool
+oscore_ctx_t *oscore_memory_alloc(void) {
+    oscore_ctx_t *ctx = (oscore_ctx_t *)memb_alloc(&oscore_ctx_pool);
+    if (ctx == NULL) {
+        LOG_DBG("OSCORE memory pool is full! Allocation failed.\n");
+    }
+    return ctx;  // Return the allocated block (or NULL if full)
+}
+
+// Free a block back to the memory pool
+void oscore_memory_free(oscore_ctx_t *ctx) {
+    if (ctx != NULL) {
+        memb_free(&oscore_ctx_pool, ctx);  // Free the block
+        LOG_DBG("OSCORE memory block freed.\n");
+    } else {
+        LOG_DBG("Attempted to free a NULL pointer!\n");
+    }
+}
+#endif /* KUDOS */
+
+
+// Function for printing arrays of uint8_t, nice for debugging
 static void
 printf_hex_detailed(const char* name, const uint8_t *data, size_t len)
 {
@@ -180,9 +211,9 @@ compose_info(
   return nanocbor_encoded_len(&enc);
 }
 
-
+#ifdef KUDOS 
 static uint8_t
-compose_Expandlabel(uint8_t *buffer, uint8_t buffer_len, char *label, const uint8_t *context, uint8_t context_len, uint8_t oscore_key_length)
+compose_Expandlabel(uint8_t *buffer, uint8_t buffer_len, const char *label, const uint8_t *context, uint8_t context_len, uint8_t oscore_key_length)
 { 
   
   uint16_t oscore_key_lengthened = oscore_key_length; 
@@ -219,6 +250,7 @@ compose_Expandlabel(uint8_t *buffer, uint8_t buffer_len, char *label, const uint
   
   return expandlabel_len;
 }
+#endif /* KUDOS */
 
 static bool
 bytes_equal(const uint8_t *a_ptr, uint8_t a_len, const uint8_t *b_ptr, uint8_t b_len)
@@ -254,21 +286,21 @@ oscore_derive_ctx(oscore_ctx_t *common_ctx,
   {
     LOG_WARN("Please decrease OSCORE_MAX_ID_CONTEXT_LEN to be at maximum %" PRIu8 "\n", id_context_len);
   }
+  
   printf_hex_detailed("master secret: ", master_secret, master_secret_len);
   printf_hex_detailed("master salt: ", master_salt, master_salt_len);
   printf_hex_detailed("derive ctx   id_context: ", id_context, id_context_len);
   printf_hex_detailed("sid: ", sid, sid_len);
   printf_hex_detailed("rid: ", rid, rid_len);
-
+  
   /* sender_key */
   info_len = compose_info(info_buffer, sizeof(info_buffer), alg, sid, sid_len, id_context, id_context_len, "Key", CONTEXT_KEY_LEN);
-  LOG_DBG("info_len =%u \n\n", info_len );
   assert(info_len > 0);
   hkdf(master_salt, master_salt_len,
        master_secret, master_secret_len,
        info_buffer, info_len,
        common_ctx->sender_context.sender_key, CONTEXT_KEY_LEN);
-  printf_hex_detailed("sender key: ", common_ctx->sender_context.sender_key, 16);
+  //printf_hex_detailed("sender key: ", common_ctx->sender_context.sender_key, 16);
 
   /* Receiver key */
   info_len = compose_info(info_buffer, sizeof(info_buffer), alg, rid, rid_len, id_context, id_context_len, "Key", CONTEXT_KEY_LEN);
@@ -277,7 +309,7 @@ oscore_derive_ctx(oscore_ctx_t *common_ctx,
        master_secret, master_secret_len,
        info_buffer, info_len,
        common_ctx->recipient_context.recipient_key, CONTEXT_KEY_LEN);
-  printf_hex_detailed("recipient key: ", common_ctx->recipient_context.recipient_key, 16);
+  //printf_hex_detailed("recipient key: ", common_ctx->recipient_context.recipient_key, 16);
 
   /* common IV */
   info_len = compose_info(info_buffer, sizeof(info_buffer), alg, NULL, 0, id_context, id_context_len, "IV", CONTEXT_INIT_VECT_LEN);
@@ -311,11 +343,8 @@ oscore_derive_ctx(oscore_ctx_t *common_ctx,
 void
 oscore_free_ctx(oscore_ctx_t *ctx)
 {
-  uint32_t length_of_list = list_length(common_context_list);
-  LOG_DBG("Längden av listan före remove %u: \n", length_of_list);
   list_remove(common_context_list, ctx); 
   memset(ctx, 0, sizeof(*ctx));
-  length_of_list = list_length(common_context_list);
 }
 
 oscore_ctx_t *
@@ -330,14 +359,13 @@ oscore_find_ctx_by_rid(const uint8_t *rid, uint8_t rid_len)
   return NULL;
 } 
 
+
+#ifdef KUDOS 
 oscore_ctx_t *
 oscore_updateCtx(const uint8_t *X,uint8_t len_X, const uint8_t *N,uint8_t len_N, oscore_ctx_t *old_Ctx)
 {
 
-  // TODO
-  //oscore_ctx_t *CTX_OUT = malloc(sizeof(oscore_ctx_t)); // kanske behövs malloc   // The new Security Context
   oscore_ctx_t *CTX_OUT = oscore_memory_alloc();
-  //uint8_t *MSECRET_NEW;   // The new Master Secret
   uint8_t MSECRET_NEW[MAX_LEN_MASTERSECRET_NEW];   // The new Master Secret
 
   const uint8_t *MSALT_NEW = N;    // The new Master Salt  
@@ -347,7 +375,6 @@ oscore_updateCtx(const uint8_t *X,uint8_t len_X, const uint8_t *N,uint8_t len_N,
 
   
   if(len_N > 23){
-    // May be += 1
     N_cbor_len += 2;
   }
   uint8_t *N_cbor;
@@ -360,11 +387,10 @@ oscore_updateCtx(const uint8_t *X,uint8_t len_X, const uint8_t *N,uint8_t len_N,
   
   uint8_t oscore_key_length = MAX_LEN_MASTERSECRET_NEW;
 
-  char *label = "key update";
+  const char *label = "key update";
   uint8_t expandlabel[HKDF_INFO_MAXLEN];
   uint8_t expandlabel_len = compose_Expandlabel(expandlabel,HKDF_INFO_MAXLEN, label, X_N, len_X_N, oscore_key_length);
   
-  //MSECRET_NEW = malloc(oscore_key_length*sizeof(u_int8_t));
   
   printf_hex_detailed("X is: ",X,len_X);
   printf_hex_detailed("X_N is: ",X_N,len_X_N);
@@ -380,15 +406,9 @@ oscore_updateCtx(const uint8_t *X,uint8_t len_X, const uint8_t *N,uint8_t len_N,
   printf_hex_detailed("Master secret new : ", MSECRET_NEW, oscore_key_length);
   LOG_DBG("\n");
   oscore_derive_ctx(CTX_OUT, MSECRET_NEW, oscore_key_length, MSALT_NEW, len_N, alg, sender_id, sender_id_len,reciever_id, reciever_id_len, NULL, 0 );
-  uint32_t length_of_list = list_length(common_context_list);
-  LOG_DBG("Längden av listan :%u \n", length_of_list);
-  //free(MSECRET_NEW);
-  //free(X_N);
-
-  list_length(common_context_list);
   return CTX_OUT;
 }
-
+#endif /* KUDOS */
 
 /* Token <=> SEQ association */
 void
@@ -455,7 +475,7 @@ oscore_remove_exchange(const uint8_t *token, uint8_t token_len)
   }
 }
 
-
+#ifdef KUDOS 
 void
 oscore_kudos_set_N2_and_X2(uint8_t *new_nonce, uint8_t X)
 {
@@ -543,7 +563,9 @@ oscore_cbor_byte_string(const uint8_t *byte_string, const uint8_t len_byte_strin
   return enc_byte_string;
 }
 
+#endif /* KUDOS */
 
+#ifdef APPb2 
 app_b2_nonces_t *
 oscore_appendixb2_get_nonces(void)
 {
@@ -564,14 +586,7 @@ oscore_appendixb2_free_ctx(oscore_ctx_t *ctx)
   return list_remove(common_context_list, ctx);
 }
 
-/*
-void
-oscore_appendixb2_set_nonce_kidcontext(uint8_t *new_nonce, uint8_t len_nonce)
-{
-  appendixb2_nonces.kid_context_nonce = new_nonce;
-  appendixb2_nonces.len_kid_context_nonce = len_nonce;
-}
-*/
+
 void
 oscore_appendixb2_set_nonce_kidcontext(uint8_t *new_nonce, uint8_t len_nonce)
 {
@@ -582,7 +597,6 @@ oscore_appendixb2_set_nonce_kidcontext(uint8_t *new_nonce, uint8_t len_nonce)
 void
 oscore_appendixb2_set_nonce_aead(const uint8_t *new_nonce, uint8_t len_nonce)
 {
-  appendixb2_nonces.aead_nonce = malloc(sizeof(uint8_t) * len_nonce);
   memcpy(appendixb2_nonces.aead_nonce, new_nonce, len_nonce);
   appendixb2_nonces.len_aead_nonce = len_nonce;
 }
@@ -598,32 +612,6 @@ oscore_appendixb2_false(void)
 {
   appendixb2_nonces.appendixb2_running = false;
 }
-
-
-
-
-/*
-void
-oscore_appendixb2_set_R1_and_len_R1(uint8_t *new_nonce, uint8_t len_nonce)
-{
-  appendixb2_nonces.R1 = new_nonce;
-  appendixb2_nonces.len_R1 = len_nonce;
-}
-
-void
-oscore_appendixb2_set_R2_and_len_R2(uint8_t *new_nonce, uint8_t len_nonce)
-{
-  appendixb2_nonces.R2 = new_nonce;
-  appendixb2_nonces.len_R2 = len_nonce;
-}
-
-void
-oscore_appendixb2_set_R3_and_len_R3(uint8_t *new_nonce, uint8_t len_nonce)
-{
-  appendixb2_nonces.R3 = new_nonce;
-  appendixb2_nonces.len_R3 = len_nonce;
-}
-*/
 
 void
 oscore_appendixb2_set_R1_and_len_R1(uint8_t *new_nonce, uint8_t len_nonce)
@@ -646,6 +634,25 @@ oscore_appendixb2_set_R3_and_len_R3(uint8_t *new_nonce, uint8_t len_nonce)
   appendixb2_nonces.len_R3 = len_nonce;
 }
 
+uint8_t *
+oscore_cbor_byte_string(const uint8_t *byte_string, const uint8_t len_byte_string)
+{ 
+  uint8_t enc_byte_string_len; 
+  if(len_byte_string > 23){
+    enc_byte_string_len = len_byte_string + 2;
+  }else {
+    enc_byte_string_len = len_byte_string + 1;
+  }
+  uint8_t *enc_byte_string = malloc(enc_byte_string_len * sizeof(uint8_t));
+  nanocbor_encoder_t enc;
+  nanocbor_encoder_init(&enc, enc_byte_string , (enc_byte_string_len * sizeof(uint8_t)));
+  if(nanocbor_put_bstr(&enc, byte_string,len_byte_string * sizeof(uint8_t))!= NANOCBOR_OK){
+    LOG_ERR("Did not encode byte string");
+  }
+  return enc_byte_string;
+}
+
+#endif /* APPb2 */
 
 
 

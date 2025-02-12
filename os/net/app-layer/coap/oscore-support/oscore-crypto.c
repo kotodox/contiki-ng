@@ -301,6 +301,7 @@ encrypt(uint8_t alg,
 }
 /*---------------------------------------------------------------------------*/
 
+/* Function for decoding
 static void
 printf_hex_detailed(const char* name, const uint8_t *data, size_t len)
 {
@@ -308,7 +309,7 @@ printf_hex_detailed(const char* name, const uint8_t *data, size_t len)
   LOG_DBG_BYTES(data, len);
   LOG_DBG_("\n");
 }
-
+*/
 /* Return 0 if decryption failure. Plaintext length otherwise.
    Tag-length and plaintext length is derived from algorithm. No check is done to ensure
    that plaintext buffer is of the correct length. */
@@ -410,8 +411,7 @@ decrypt(uint8_t alg,
   printf_hex("Plaintext", buffer, plaintext_len);
 #endif
 
-  printf_hex_detailed("Tag used in memcmp'", tag_buffer, COSE_algorithm_AES_CCM_16_64_128_TAG_LEN);
-  printf_hex_detailed("Plaintext", &(buffer[plaintext_len]), plaintext_len);
+  
   if(memcmp(tag_buffer, &(buffer[plaintext_len]), COSE_algorithm_AES_CCM_16_64_128_TAG_LEN) != 0) {
     return OSCORE_CRYPTO_DECRYPTION_FAILURE; /* Decryption failure */
   }

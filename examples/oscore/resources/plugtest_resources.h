@@ -4,13 +4,16 @@
 extern uint8_t test;
 extern uint8_t failed_tests;
 
+#ifdef KUDOS
 void test_kudos(coap_message_t* request);
 void test_kudos_handler(void* response);
+#endif
 
+#ifdef APPb2
 void test_appendixb2(coap_message_t* request);
 void test_appendixb2_handler_first_response(void* response);
 void test_appendixb2_handler_second_response(void* response);
-
+#endif
 
 void test0_a(coap_message_t* request);
 void test0_a_handler(void* response);
@@ -63,4 +66,3 @@ void test15_a_handler(void* response);
 void test16_a(coap_message_t* request);
 void test16_a_handler(void* response);
 
-void test_a(coap_message_t* request);

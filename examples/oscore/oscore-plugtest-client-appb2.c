@@ -112,8 +112,8 @@ PROCESS_THREAD(er_example_client, ev, data)
   
   while(1) {
     PROCESS_YIELD();
-    app_b2_nonces_t *appb2_vars = oscore_appendixb2_get_nonces();
     if(etimer_expired(&et)) {
+    app_b2_nonces_t *appb2_vars = oscore_appendixb2_get_nonces();
       switch ( test ) {
       	
         case 0:

@@ -114,7 +114,7 @@ typedef struct oscore_exchange {
   uint8_t token_len;
 } oscore_exchange_t;
 
-
+#ifdef APPb2
 typedef struct app_b2_nonces{
   bool appendixb2_running;
   uint8_t *R1;
@@ -145,6 +145,25 @@ oscore_ctx_t *oscore_memory_alloc(void);
 // Function to deallocate memory in pool
 void oscore_memory_free(oscore_ctx_t *ctx);
 
+#endif /* APPb2 */
+
+
+#ifdef KUDOS 
+
+#define MAX_LEN_NONCES 8 // Max length of the nonces used in appendix b.2 and Kudos
+#define MAX_LEN_MASTERSECRET_NEW 16 // Max length of newly created master secrets
+// Declare the memory pool for oscore_ctx_t structures
+//extern struct memb oscore_ctx_pool;
+
+// Function to initialize the memory pool
+void oscore_memory_init(void);
+
+// Function to allocate memory in pool
+oscore_ctx_t *oscore_memory_alloc(void);
+
+// Function to deallocate memory in pool
+void oscore_memory_free(oscore_ctx_t *ctx);
+
 
 typedef struct kudos_variables{
   bool kudos_running;
@@ -154,6 +173,8 @@ typedef struct kudos_variables{
   uint8_t X2;
   oscore_ctx_t *ctx_old;
 } kudos_variables_t;
+
+#endif /* KUDOS */
 
 void oscore_ctx_store_init(void);
 
@@ -194,11 +215,13 @@ void oscore_free_ctx(oscore_ctx_t *ctx);
 
 oscore_ctx_t *oscore_find_ctx_by_rid(const uint8_t *rid, uint8_t rid_len);
 
-uint8_t *oscore_cbor_byte_string(const uint8_t *byte_string, const uint8_t len_byte_string);
+
 
 
 
 // Appendix b.2 functions bellow
+#ifdef APPb2 
+uint8_t *oscore_cbor_byte_string(const uint8_t *byte_string, const uint8_t len_byte_string);
 
 app_b2_nonces_t *oscore_appendixb2_get_nonces(void);
 
@@ -220,9 +243,12 @@ void oscore_appendixb2_set_nonce_kidcontext(uint8_t *new_nonce, uint8_t len_nonc
 
 void oscore_appendixb2_set_nonce_aead(const uint8_t *new_nonce, uint8_t len_nonce);
 
+#endif
 // End of appendix b.2 functions
 
 // Kudos functions bellow
+#ifdef KUDOS
+uint8_t *oscore_cbor_byte_string(const uint8_t *byte_string, const uint8_t len_byte_string);
 
 bool oscore_kudos_free_ctx(oscore_ctx_t *ctx);
 
@@ -242,6 +268,7 @@ oscore_ctx_t *oscore_updateCtx(const uint8_t *X, uint8_t len_X, const uint8_t *N
 
 kudos_variables_t *oscore_kudos_get_variables(void);
 
+#endif
 // End of kudos functions
 
 /* Token <=> SEQ association */

@@ -110,9 +110,9 @@ typedef enum {
   SERVICE_UNAVAILABLE_5_03 = 163,       /* SERVICE_UNAVAILABLE */
   GATEWAY_TIMEOUT_5_04 = 164,   /* GATEWAY_TIMEOUT */
   PROXYING_NOT_SUPPORTED_5_05 = 165,    /* PROXYING_NOT_SUPPORTED */
-
+  #ifdef KUDOS
   BAD_OPTION_KUDOS = 166, /*No d-flag set but extension flag set */
-
+  #endif
   /* Erbium errors */
   MEMORY_ALLOCATION_ERROR = 192,
   PACKET_SERIALIZATION_ERROR,

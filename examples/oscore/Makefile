@@ -1,12 +1,32 @@
-all: oscore-example-server oscore-example-client oscore-plugtest-server oscore-plugtest-client oscore-plugtest-client-kudos oscore-plugtest-client-appb2
+ifneq ($(filter kudos, $(MAKECMDGOALS)),)
+    CFLAGS += -DKUDOS
+endif
+
+ifneq ($(filter appendixb2, $(MAKECMDGOALS)),)
+    CFLAGS += -DAPPb2
+endif
+
+
+all: oscore-example-server oscore-example-client oscore-plugtest-server oscore-plugtest-client # oscore-plugtest-client-kudos oscore-plugtest-client-appb2
 # use target "oscore-plugtest-server" explicitly when required
+
 
 CONTIKI=../..
 
 MAKE_WITH_OSCORE = 1
+
 WERROR = 0 # ska vara ett när developement är färdigt
 CFLAGS += -DCOOJA_MTARCH_STACKSIZE=4096
 CFLAGS += -DOSCORE_EP_CTX_ASSOCIATION
+
+
+
+
+#kudos: CFLAGS += -DKUDOS
+kudos: oscore-plugtest-server oscore-plugtest-client-kudos
+
+appendixb2: oscore-plugtest-server oscore-plugtest-client-appb2
+
 
 # build RESTful resources
 include $(CONTIKI)/Makefile.identify-target

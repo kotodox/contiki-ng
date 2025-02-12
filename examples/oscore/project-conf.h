@@ -41,6 +41,9 @@
 
 #define LOG_LEVEL_APP LOG_LEVEL_DBG
 #define LOG_CONF_LEVEL_COAP LOG_LEVEL_DBG
+
+
+// All defines below are implemented for testing kudos and Appendixb2 and should be changed when necesary
 #undef UIP_CONF_TCP
 #define COAP_MAX_OPEN_TRANSACTIONS   1
 #define UIP_TCP 0
