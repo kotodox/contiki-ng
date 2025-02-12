@@ -323,7 +323,7 @@ oscore_decode_option_value(uint8_t *option_value, int option_len, cose_encrypt0_
     offset++;
   }
 #endif /* KUDOS */
-
+  LOG_DBG("option len: %u  partial iv len: %u \n\n");
   uint8_t partial_iv_len = (option_value[0] & 0x07);
   if(partial_iv_len != 0) {    
     if(offset + partial_iv_len > option_len) {
@@ -350,7 +350,7 @@ oscore_decode_option_value(uint8_t *option_value, int option_len, cose_encrypt0_
   }
 
 #ifdef KUDOS 
-  if((option_value[0] & 0x80) != 0) {  
+  if((option_value[0] & 0x80) != 0) { 
       if((option_value[1] & 0x01) != 0){
         kudos_variables_t *kudos_vars = oscore_kudos_get_variables();
         LOG_DBG("KUDOS request iniatied\n");
@@ -561,7 +561,7 @@ oscore_decode_message(coap_message_t *coap_pkt)
       uint8_t len_X2 = sizeof(uint8_t);
       uint8_t len_N2 = (*X2 & 0x0f) + 1;
 
-      uint8_t comb_N1_N2[MAX_LEN_NONCES];
+      uint8_t comb_N1_N2[(MAX_LEN_NONCES * 2) + 2 ];
       uint8_t comb_X1_X2[4];
       oscore_kudos_comb(comb_N1_N2, N1, len_N1, N2, len_N2);
       oscore_kudos_comb(comb_X1_X2, X1, len_X1, X2, len_X2);      
@@ -886,8 +886,6 @@ oscore_prepare_message(coap_message_t *coap_pkt, uint8_t *buffer)
     LOG_ERR("No context in OSCORE!\n");
     return PACKET_SERIALIZATION_ERROR;
   }
-  printf_hex_detailed("master secret: ", ctx->master_secret, ctx->master_secret_len);
-  printf_hex_detailed("master salt: ", ctx->master_salt, ctx->master_salt_len);
 
 #ifdef KUDOS 
   kudos_variables_t *kudos_vars = oscore_kudos_get_variables();

@@ -374,7 +374,7 @@ coap_receive(const coap_endpoint_t *src,
             
 
             //If nonces longer than 21 bytes its + 4
-            uint8_t comb_N1_N2[MAX_LEN_NONCES + 2];
+            uint8_t comb_N1_N2[(MAX_LEN_NONCES * 2) + 2];
 
             // Should never be more than 4 since X is 1 byte and with cbor extra 1 byte so cbor X1 + cbor X2 = 2 + 2
             uint8_t comb_X1_X2[4];

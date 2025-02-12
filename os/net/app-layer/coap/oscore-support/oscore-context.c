@@ -65,7 +65,6 @@ MEMB(exchange_memb, oscore_exchange_t, TOKEN_SEQ_NUM);
 LIST(common_context_list);
 LIST(exchange_list);
 
-//#define MAX_LEN_NONCES 8 // Max length of the nonces used in appendix b.2 and Kudos 
 #ifdef APPb2
 static uint8_t R1_buffer[MAX_LEN_NONCES];
 static uint8_t R2_buffer[MAX_LEN_NONCES];
@@ -287,7 +286,7 @@ oscore_derive_ctx(oscore_ctx_t *common_ctx,
     LOG_WARN("Please decrease OSCORE_MAX_ID_CONTEXT_LEN to be at maximum %" PRIu8 "\n", id_context_len);
   }
   
-  printf_hex_detailed("master secret: ", master_secret, master_secret_len);
+  printf_hex_detailed("master secret: 1", master_secret, master_secret_len);
   printf_hex_detailed("master salt: ", master_salt, master_salt_len);
   printf_hex_detailed("derive ctx   id_context: ", id_context, id_context_len);
   printf_hex_detailed("sid: ", sid, sid_len);
@@ -379,7 +378,8 @@ oscore_updateCtx(const uint8_t *X,uint8_t len_X, const uint8_t *N,uint8_t len_N,
   }
   uint8_t *N_cbor;
   uint8_t len_X_N = X_cbor_len + N_cbor_len; 
-  uint8_t *X_N = malloc(len_X_N * sizeof(uint8_t));
+  uint8_t X_N[(MAX_LEN_NONCES * 2) + 2 + 2 + 4];
+  //uint8_t *X_N = malloc(len_X_N * sizeof(uint8_t));
   X_cbor = oscore_cbor_byte_string(X,len_X);
   N_cbor = oscore_cbor_byte_string(N, len_N);
   memcpy(X_N,X_cbor,X_cbor_len);
@@ -406,6 +406,7 @@ oscore_updateCtx(const uint8_t *X,uint8_t len_X, const uint8_t *N,uint8_t len_N,
   printf_hex_detailed("Master secret new : ", MSECRET_NEW, oscore_key_length);
   LOG_DBG("\n");
   oscore_derive_ctx(CTX_OUT, MSECRET_NEW, oscore_key_length, MSALT_NEW, len_N, alg, sender_id, sender_id_len,reciever_id, reciever_id_len, NULL, 0 );
+  printf_hex_detailed("Master secret new2 : ", MSECRET_NEW, oscore_key_length);
   return CTX_OUT;
 }
 #endif /* KUDOS */
