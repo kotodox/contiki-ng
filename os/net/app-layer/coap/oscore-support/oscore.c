@@ -1006,11 +1006,13 @@ oscore_prepare_message(coap_message_t *coap_pkt, uint8_t *buffer)
 #ifdef WITH_GROUPCOM
   const bool include_partial_iv = true;
 #elif KUDOS
+  bool tmp;
   if(kudos_vars->kudos_running){
-  const bool include_partial_iv = true;
+  tmp = true;
   } else {
-  const bool include_partial_iv = coap_is_request(coap_pkt);
+  tmp = coap_is_request(coap_pkt);
   }
+  const bool include_partial_iv = tmp;
 #else
   const bool include_partial_iv = coap_is_request(coap_pkt);
 #endif
