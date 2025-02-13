@@ -839,7 +839,9 @@ oscore_populate_cose(const coap_message_t *pkt, cose_encrypt0_t *cose, const osc
 
     } else { /* receiving */
       assert(cose->partial_iv_len > 0); /* Partial IV set when getting seq from exchange. */
+      LOG_DBG("Kommer client hit? \n\n\n");
       if(cose->response_flag){
+        LOG_DBG("Kommer client hit2? \n\n\n");
         cose_encrypt0_set_key_id(cose, ctx->recipient_context.recipient_id, ctx->recipient_context.recipient_id_len);
 #ifdef KUDOS 
         if(kudos_var->kudos_running){
