@@ -172,7 +172,7 @@ void response_handler(coap_message_t *response){
       
       test_kudos_handler(response);
       break;
-    }
+    
     case 1:
       
       test_kudos_handler2(response);
