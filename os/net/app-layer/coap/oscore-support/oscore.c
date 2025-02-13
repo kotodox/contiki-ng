@@ -209,7 +209,7 @@ oscore_encode_option_value(uint8_t *option_buffer, const cose_encrypt0_t *cose, 
   }
 #endif /* KUDOS */
 
-  if(cose->partial_iv_len > 0 && cose->partial_iv != NULL && include_partial_iv) { // && cose->partial_iv_len < 6) {
+  if(cose->partial_iv_len > 0 && cose->partial_iv != NULL && include_partial_iv) { 
     option_buffer[0] |= (0x07 & cose->partial_iv_len);
     memcpy(&(option_buffer[offset]), cose->partial_iv, cose->partial_iv_len);
     offset += cose->partial_iv_len;
@@ -905,6 +905,7 @@ oscore_prepare_message(coap_message_t *coap_pkt, uint8_t *buffer)
     oscore_ctx_t *ctx_new = oscore_updateCtx(&X, len_X, N, len_N,ctx_old);
     ctx = ctx_new;
     coap_pkt->security_context = ctx_new;
+
   }
 #endif /* KUDOS */
 
@@ -1004,9 +1005,16 @@ oscore_prepare_message(coap_message_t *coap_pkt, uint8_t *buffer)
   // Partial IV shall NOT be included in responses if not a request
 #ifdef WITH_GROUPCOM
   const bool include_partial_iv = true;
+#elif KUDOS
+  if(kudos_vars->kudos_running){
+  const bool include_partial_iv = true;
+  } else {
+  const bool include_partial_iv = coap_is_request(coap_pkt);
+  }
 #else
   const bool include_partial_iv = coap_is_request(coap_pkt);
 #endif
+
   const uint8_t option_value_len = oscore_encode_option_value(option_value_buffer, cose, include_partial_iv);
   
   coap_set_header_object_security(coap_pkt, option_value_buffer, option_value_len);
