@@ -7,12 +7,14 @@ extern uint8_t failed_tests;
 #ifdef KUDOS
 void test_kudos(coap_message_t* request);
 void test_kudos_handler(void* response);
+void test_kudos_handler2(void* response);
 #endif
 
 #ifdef APPb2
 void test_appendixb2(coap_message_t* request);
 void test_appendixb2_handler_first_response(void* response);
 void test_appendixb2_handler_second_response(void* response);
+void test_appendixb2_handler_finish(void* response);
 #endif
 
 void test0_a(coap_message_t* request);

@@ -145,6 +145,10 @@ PROCESS_THREAD(er_example_client, ev, data)
         case 2:
           //test_appendixb2(request);
           break;
+        case 3:
+          PROCESS_END();
+          //test_appendixb2(request);
+          break;
     	}
         coap_set_token(request, token, 2);
       	COAP_BLOCKING_REQUEST(&server_ep, request, response_handler);
@@ -167,6 +171,10 @@ void response_handler(coap_message_t *response){
     
     case 1:
       test_appendixb2_handler_second_response(response);
+      break;
+
+    case 2:
+      test_appendixb2_handler_finish(response);
       break;
   }
 }

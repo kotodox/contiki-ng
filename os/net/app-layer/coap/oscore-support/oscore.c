@@ -267,6 +267,7 @@ oscore_encode_option_value(uint8_t *option_buffer, const cose_encrypt0_t *cose, 
     else{
       X = kudos_vars->X2;
       N = kudos_vars->N2;
+      kudos_vars->X1 = 0;
     }
     uint8_t m = (X & 0x0f);
     memcpy(&(option_buffer[offset]),&X,1); /*The len is hardcoded as 1 because according to KUDOS it always is like that*/
@@ -274,6 +275,7 @@ oscore_encode_option_value(uint8_t *option_buffer, const cose_encrypt0_t *cose, 
     memcpy(&(option_buffer[offset]),N,m+1);
     offset += m+1;
     oscore_kudos_false(); // Kanske kommer behöva flytta på denna för a free old_ctx
+    kudos_vars->X2 = 0; 
   }
 #endif /* KUDOS */
 
@@ -842,6 +844,8 @@ oscore_populate_cose(const coap_message_t *pkt, cose_encrypt0_t *cose, const osc
 #ifdef KUDOS 
         if(kudos_var->kudos_running){
           oscore_kudos_false();
+          kudos_var->X1 = 0;
+          kudos_var->X2 = 0; 
         }
 #endif /* KUDOS */
         cose->response_flag = false;

@@ -135,6 +135,13 @@ PROCESS_THREAD(er_example_client, ev, data)
           //printf_hex_detailed("master secret: ", context->master_secret, context->master_secret_len);
           //printf_hex_detailed("master salt: ", context->master_salt, context->master_salt_len);
           break;
+        
+        case 2:
+          LOG_DBG("KUDOS finished");
+          PROCESS_EXIT();
+          //printf_hex_detailed("master secret: ", context->master_secret, context->master_secret_len);
+          //printf_hex_detailed("master salt: ", context->master_salt, context->master_salt_len);
+          break;
           
     	}
 
@@ -164,6 +171,11 @@ void response_handler(coap_message_t *response){
     case 0:
       
       test_kudos_handler(response);
+      break;
+    }
+    case 1:
+      
+      test_kudos_handler2(response);
       break;
     }
 }
