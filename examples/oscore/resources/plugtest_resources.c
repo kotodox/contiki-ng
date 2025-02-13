@@ -50,6 +50,20 @@ void test_appendixb2_handler_second_response(void* response){
     failed_tests++;
   }
 }
+void test_appendixb2_handler_finish(void* response){
+  coap_message_t *response_msg = (coap_message_t *)response;
+  uint8_t response_type = response_msg->type;
+  printf("type = %u\n", response_type);
+
+  if(response_type == 2){
+    printf("Appendixb2 protocol: PASSED!\n");
+    test++;
+  }else {
+    printf("Test appendixb2: FAILED!\n");
+    printf("%.*u\n", 2, response_type);
+    failed_tests++;
+  }
+}
 
 #endif
 #ifdef KUDOS
@@ -75,6 +89,24 @@ void test_kudos_handler(void* response){
     failed_tests++;
   }
 }
+
+void test_kudos_handler2(void* response){
+  printf("Test kudos: Receiving Response!\n");
+//return;
+  coap_message_t *response_msg = (coap_message_t *)response;
+  uint8_t response_type = response_msg->type;
+  printf("type = %u\n", response_type);
+
+  if(response_type == 2){
+    printf("KUDOS rekeying worked: PASSED!\n");
+    test++;
+  }else {
+    printf("KUDOS: FAILED!\n");
+    printf("%.*u\n", 2, response_type);
+    failed_tests++;
+  }
+}
+
 #endif
 void test0_a(coap_message_t* request){
   printf("\n\nTest 0a: Starting!\n");
