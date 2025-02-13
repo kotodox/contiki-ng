@@ -3,11 +3,11 @@
 #include "uipopt.h"
 
 
-#include <endian.h>  // Use this for native
+//#include <endian.h>  // Use this for native
 
-//#include "machine/endian.h"    // Use this for IoT devices
+#include "machine/endian.h"    // Use this for IoT devices
 
- /*  When using "machine/endian.h" remove the comment section around this code
+ /*  When using "machine/endian.h" remove the comment section around line 11-58 */
 
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
 
@@ -55,7 +55,7 @@
 #error "Unknown byte order"
 #endif
   
- */
+ 
 
 /* BSD Names */
 

@@ -68,8 +68,8 @@ uint8_t receiver_id[] = { 0x01};
 
 /* FIXME: This server address is hard-coded for Cooja and link-local for unconnected border router. */
 //#define SERVER_EP "coap://[fe80::202:0002:0002:0002]" //Cooja simulation address 
-//#define SERVER_EP "coap://[fe80::212:4b00:14b5:d8a3]:5683" //Ip for plugtest server  coap://
-#define SERVER_EP "coap://[fd00::1]:5683"
+#define SERVER_EP "coap://[fe80::212:4b00:1003:4ce4]:5683" //Ip for plugtest server  
+//#define SERVER_EP "coap://[fd00::1]:5683"
 
 uint8_t test = 0;
 uint8_t failed_tests = 0;
