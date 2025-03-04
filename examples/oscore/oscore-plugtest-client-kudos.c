@@ -118,6 +118,7 @@ PROCESS_THREAD(er_example_client, ev, data)
       switch ( test ) {
         case 0:
 
+          {
           oscore_kudos_true();
           uint8_t X = 7;
           uint8_t len_N = 8;
@@ -130,6 +131,7 @@ PROCESS_THREAD(er_example_client, ev, data)
           oscore_kudos_set_old_ctx(&context);
           test_kudos(request);
           break;
+          }
         
         case 1:
           //printf_hex_detailed("master secret: ", context->master_secret, context->master_secret_len);

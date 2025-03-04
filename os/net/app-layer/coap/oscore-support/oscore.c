@@ -1013,6 +1013,7 @@ oscore_prepare_message(coap_message_t *coap_pkt, uint8_t *buffer)
   tmp = coap_is_request(coap_pkt);
   }
   const bool include_partial_iv = tmp;
+  LOG_DBG("include partial iv %d\n\n", include_partial_iv);
 #else
   const bool include_partial_iv = coap_is_request(coap_pkt);
 #endif

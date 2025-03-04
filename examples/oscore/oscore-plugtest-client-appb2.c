@@ -67,8 +67,8 @@ uint8_t receiver_id[] = { 0x01};
 
 /* FIXME: This server address is hard-coded for Cooja and link-local for unconnected border router. */
 //#define SERVER_EP "coap://[fe80::202:0002:0002:0002]" //Cooja simulation address 
-//#define SERVER_EP "coap://[fe80::212:4b00:14b5:d8a3]:5683" //Ip for plugtest server  coap://
-#define SERVER_EP "coap://[fd00::1]:5683"
+#define SERVER_EP "coap://[fe80::212:4b00:14b5:d8a3]:5683" //Ip for plugtest server  coap://
+//#define SERVER_EP "coap://[fd00::1]:5683"
 
 uint8_t test = 0;
 uint8_t failed_tests = 0;
@@ -103,7 +103,7 @@ PROCESS_THREAD(er_example_client, ev, data)
   if( ret != 2) {
 	 printf("Not all URIs associated with contexts!\n");
   } 
-  printf("Vi är här nån gång va \n");
+  
 
   oscore_memory_init(); // only use for appb2
 
@@ -115,9 +115,8 @@ PROCESS_THREAD(er_example_client, ev, data)
     if(etimer_expired(&et)) {
     app_b2_nonces_t *appb2_vars = oscore_appendixb2_get_nonces();
       switch ( test ) {
-      	
-        case 0:
-          
+      	case 0:
+          {
           oscore_appendixb2_true();
           uint8_t len_R1 = 8;
           uint8_t *R1 = appb2_vars->R1;
@@ -128,9 +127,11 @@ PROCESS_THREAD(er_example_client, ev, data)
           oscore_appendixb2_set_nonce_kidcontext(R1,len_R1);
           test_appendixb2(request);
           break;
-
+          }
           
         case 1:
+        
+          {
           uint8_t len_R3 = 8;
           //uint8_t *R3 = malloc(len_R3 * sizeof(uint8_t));
           uint8_t *R3 = appb2_vars->R3;
@@ -142,16 +143,21 @@ PROCESS_THREAD(er_example_client, ev, data)
           test_appendixb2(request);
           
           break;
+          }
+          
         case 2:
           //test_appendixb2(request);
           break;
+          
         case 3:
-          PROCESS_END();
+        
+          PROCESS_EXIT();
           //test_appendixb2(request);
           break;
     	}
         coap_set_token(request, token, 2);
       	COAP_BLOCKING_REQUEST(&server_ep, request, response_handler);
+        
 
 	//test++;
         etimer_reset(&et);
