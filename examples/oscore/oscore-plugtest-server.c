@@ -123,7 +123,7 @@ PROCESS_THREAD(plugtest_server, ev, data)
   coap_activate_resource(&res_test,   "oscore/test");
 
   #ifdef APPb2
-  coap_activate_resource(&res_appb2,  "rederivation/blackhole");
+  //coap_activate_resource(&res_appb2,  "rederivation/blackhole");
   coap_activate_resource(&res_kudos,  "well-known/kudos");
   #endif
   #ifdef KUDOS
@@ -140,7 +140,8 @@ PROCESS_THREAD(plugtest_server, ev, data)
   oscore_protect_resource(&res_test);
   #ifdef APPb2
   oscore_protect_resource(&res_kudos);
-  oscore_protect_resource(&res_appb2);
+  //  TODO
+  //oscore_protect_resource(&res_appb2);
   #endif
   #ifdef KUDOS
   oscore_protect_resource(&res_kudos);

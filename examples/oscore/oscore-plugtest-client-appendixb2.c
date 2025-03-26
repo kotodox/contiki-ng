@@ -47,7 +47,6 @@
 #include "appendix_b2.h"
 #include "res_kudos.h"
 
-
 #ifdef WITH_OSCORE
 #include "oscore.h"
 

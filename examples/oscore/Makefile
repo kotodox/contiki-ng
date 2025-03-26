@@ -5,6 +5,8 @@ endif
 
 ifneq ($(filter kudos, $(MAKECMDGOALS)),)
     CFLAGS += -DKUDOS
+	#CFLAGS += -fsanitize=address -g -O0
+	#LDFLAGS += -fsanitize=address
 endif
 
 

@@ -567,6 +567,7 @@ oscore_cbor_byte_string(const uint8_t *byte_string, const uint8_t len_byte_strin
 #endif /* KUDOS */
 
 #ifdef APPb2 
+
 app_b2_nonces_t *
 oscore_appendixb2_get_nonces(void)
 {
