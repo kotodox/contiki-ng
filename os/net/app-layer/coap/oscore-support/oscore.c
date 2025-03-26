@@ -275,6 +275,7 @@ oscore_encode_option_value(uint8_t *option_buffer, const cose_encrypt0_t *cose, 
     memcpy(&(option_buffer[offset]),N,m+1);
     offset += m+1;
     oscore_kudos_false(); // Kanske kommer behöva flytta på denna för a free old_ctx
+    LOG_DBG("please say hit");
     kudos_vars->X2 = 0; 
   }
 #endif /* KUDOS */
@@ -583,6 +584,10 @@ oscore_decode_message(coap_message_t *coap_pkt)
       printf_hex_detailed("After kudos free",kudos_vars->ctx_old->master_secret,kudos_vars->ctx_old->master_secret_len);
 
       LOG_DBG("Här vi är right? \n");
+      oscore_kudos_false();
+      LOG_DBG("please say hi");
+      kudos_vars->X1 = 0;
+      kudos_vars->X2 = 0; 
     }
 #endif /* KUDOS */
     
@@ -839,17 +844,18 @@ oscore_populate_cose(const coap_message_t *pkt, cose_encrypt0_t *cose, const osc
 
     } else { /* receiving */
       assert(cose->partial_iv_len > 0); /* Partial IV set when getting seq from exchange. */
-      LOG_DBG("Kommer client hit? \n\n\n");
+
       if(cose->response_flag){
-        LOG_DBG("Kommer client hit2? \n\n\n");
+
         cose_encrypt0_set_key_id(cose, ctx->recipient_context.recipient_id, ctx->recipient_context.recipient_id_len);
+        /*
 #ifdef KUDOS 
         if(kudos_var->kudos_running){
           oscore_kudos_false();
           kudos_var->X1 = 0;
           kudos_var->X2 = 0; 
         }
-#endif /* KUDOS */
+#endif *//* KUDOS */
         cose->response_flag = false;
       } else {
         cose_encrypt0_set_key_id(cose, ctx->sender_context.sender_id, ctx->sender_context.sender_id_len);
@@ -1005,6 +1011,7 @@ oscore_prepare_message(coap_message_t *coap_pkt, uint8_t *buffer)
   // Partial IV shall NOT be included in responses if not a request
 #ifdef WITH_GROUPCOM
   const bool include_partial_iv = true;
+  /*
 #elif KUDOS
   bool tmp;
   if(kudos_vars->kudos_running){
@@ -1014,6 +1021,7 @@ oscore_prepare_message(coap_message_t *coap_pkt, uint8_t *buffer)
   }
   const bool include_partial_iv = tmp;
   LOG_DBG("include partial iv %d\n\n", include_partial_iv);
+  */
 #else
   const bool include_partial_iv = coap_is_request(coap_pkt);
 #endif
