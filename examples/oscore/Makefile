@@ -1,11 +1,16 @@
+ifneq ($(filter appb2, $(MAKECMDGOALS)),)
+    CFLAGS += -DAPPb2
+endif
+
+
 ifneq ($(filter kudos, $(MAKECMDGOALS)),)
     CFLAGS += -DKUDOS
 endif
 
-ifneq ($(filter appendixb2, $(MAKECMDGOALS)),)
-    CFLAGS += -DAPPb2
-endif
 
+appb2: oscore-plugtest-server oscore-plugtest-client-appendixb2
+
+kudos: oscore-plugtest-server oscore-plugtest-client-kudos
 
 all: oscore-example-server oscore-example-client oscore-plugtest-server oscore-plugtest-client # oscore-plugtest-client-kudos oscore-plugtest-client-appb2
 # use target "oscore-plugtest-server" explicitly when required
@@ -22,10 +27,6 @@ CFLAGS += -DOSCORE_EP_CTX_ASSOCIATION
 
 
 
-#kudos: CFLAGS += -DKUDOS
-kudos: oscore-plugtest-server oscore-plugtest-client-kudos
-
-appendixb2: oscore-plugtest-server oscore-plugtest-client-appb2
 
 
 # build RESTful resources

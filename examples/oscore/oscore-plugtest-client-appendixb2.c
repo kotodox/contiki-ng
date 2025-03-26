@@ -68,7 +68,7 @@ uint8_t receiver_id[] = { 0x01};
 
 /* FIXME: This server address is hard-coded for Cooja and link-local for unconnected border router. */
 //#define SERVER_EP "coap://[fe80::202:0002:0002:0002]" //Cooja simulation address 
-#define SERVER_EP "coap://[fe80::212:4b00:14b5:d8a3]:5683" //Ip for plugtest server  
+#define SERVER_EP "coap://[fe80::212:4b00:1003:4ce4]:5683" //Ip for plugtest server  coap://
 //#define SERVER_EP "coap://[fd00::1]:5683"
 
 uint8_t test = 0;
@@ -87,7 +87,6 @@ uint8_t token[2] = { 0x05, 0x05};
 char *service_urls[NUMBER_OF_URLS] =
 { ".well-known/core", "oscore/hello/coap", "/rederivation/blackhole/","well-known/kudos/"};
 
-
 PROCESS_THREAD(er_example_client, ev, data)
 {
   PROCESS_BEGIN();
@@ -105,8 +104,9 @@ PROCESS_THREAD(er_example_client, ev, data)
   if( ret != 2) {
 	 printf("Not all URIs associated with contexts!\n");
   } 
+  
 
-  oscore_memory_init(); // only use for kudos
+  oscore_memory_init(); // only use for appb2
 
   #endif /* WITH_OSCORE */
   etimer_set(&et, TOGGLE_INTERVAL * CLOCK_SECOND);
@@ -114,42 +114,51 @@ PROCESS_THREAD(er_example_client, ev, data)
   while(1) {
     PROCESS_YIELD();
     if(etimer_expired(&et)) {
-      kudos_variables_t *kudos_vars = oscore_kudos_get_variables();
-
+    app_b2_nonces_t *appb2_vars = oscore_appendixb2_get_nonces();
       switch ( test ) {
-        case 0:
-
+      	case 0:
           {
-          oscore_kudos_true();
-          uint8_t X = 7;
-          uint8_t len_N = 8;
-          uint8_t *N = kudos_vars->N1;
-          for(int i=0;i<len_N;i++){
-              N[i] = (uint8_t)random_rand();
+          oscore_appendixb2_true();
+          uint8_t len_R1 = 8;
+          uint8_t *R1 = appb2_vars->R1;
+          for(int i=0;i<len_R1;i++){
+              R1[i] = (uint8_t)random_rand();
             }
-          //oscore_kudos_set_N1_and_X1(N,X);
-          kudos_vars->X1 = X;
-          oscore_kudos_set_old_ctx(&context);
-          test_kudos(request);
+          oscore_appendixb2_set_R1_and_len_R1(R1,len_R1);
+          oscore_appendixb2_set_nonce_kidcontext(R1,len_R1);
+          test_appendixb2(request);
           break;
           }
-        
+          
         case 1:
-          //printf_hex_detailed("master secret: ", context->master_secret, context->master_secret_len);
-          //printf_hex_detailed("master salt: ", context->master_salt, context->master_salt_len);
-          break;
         
+          {
+          uint8_t len_R3 = 8;
+          //uint8_t *R3 = malloc(len_R3 * sizeof(uint8_t));
+          uint8_t *R3 = appb2_vars->R3;
+          for(int i=0;i<len_R3;i++){
+              R3[i] = (uint8_t)random_rand();
+            }
+          appb2_vars->len_R3 = len_R3;
+          //oscore_appendixb2_set_R3_and_len_R3(R3,len_R3);
+          test_appendixb2(request);
+          
+          break;
+          }
+          
         case 2:
-          LOG_DBG("KUDOS finished");
-          PROCESS_EXIT();
-          //printf_hex_detailed("master secret: ", context->master_secret, context->master_secret_len);
-          //printf_hex_detailed("master salt: ", context->master_salt, context->master_salt_len);
+          //test_appendixb2(request);
           break;
           
+        case 3:
+        
+          PROCESS_EXIT();
+          //test_appendixb2(request);
+          break;
     	}
-
         coap_set_token(request, token, 2);
       	COAP_BLOCKING_REQUEST(&server_ep, request, response_handler);
+        
 
 	//test++;
         etimer_reset(&et);
@@ -160,26 +169,20 @@ PROCESS_THREAD(er_example_client, ev, data)
   PROCESS_END();
 }
 
-static void
-printf_hex_detailed(const char* name, const uint8_t *data, size_t len)
-{
-  LOG_DBG("%s (len=%zu): ", name, len);
-  LOG_DBG_BYTES(data, len);
-  LOG_DBG_("\n");
-}
-
 void response_handler(coap_message_t *response){
   printf("Response handler test: %d\n", test);
   switch (test) {
     case 0:
-      
-      test_kudos_handler(response);
+      test_appendixb2_handler_first_response(response);
       break;
     
     case 1:
-      
-      test_kudos_handler2(response);
+      test_appendixb2_handler_second_response(response);
       break;
-    }
+
+    case 2:
+      test_appendixb2_handler_finish(response);
+      break;
+  }
 }
 
